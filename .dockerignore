@@ -1,0 +1,11 @@
+frontend/node_modules
+frontend/dist
+backend/__pycache__
+backend/**/__pycache__
+backend/**/*.pyc
+backend/.venv
+backend/venv
+backend/settings.json
+**/.codeinsight.json
+**/.git
+**/.claude

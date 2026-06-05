@@ -1,0 +1,20 @@
+# 敏感設定（含 API Key）
+backend/settings.json
+
+# Python
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.venv/
+backend/venv/
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+
+# CodeInsight 快取
+**/.codeinsight.json
+
+# 環境變數
+.env
+*.env

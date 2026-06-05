@@ -1,0 +1,6 @@
+{
+  "provider": "claude",
+  "api_key": "YOUR_API_KEY_HERE",
+  "model": "",
+  "ollama_url": "http://localhost:11434"
+}

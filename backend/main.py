@@ -1,0 +1,289 @@
+import asyncio
+import hashlib
+import json
+import os
+from pathlib import Path
+
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+    _TKINTER_AVAILABLE = True
+except ImportError:
+    _TKINTER_AVAILABLE = False
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
+
+from analyzer import analyze_files, build_markdown_report, get_context_summary
+from cache import is_stale, load_cache, load_reports, save_cache, save_reports
+from chat import ChatEngine
+from llm.claude import ClaudeProvider
+from llm.deepseek import DeepSeekProvider
+from llm.ollama import OllamaProvider
+from llm.openai_provider import OpenAIProvider
+from quiz import generate_questions, grade_answer
+from report_generator import generate_reports
+from scanner import scan_directory
+
+app = FastAPI(title="CodeInsight API")
+_allowed_origins = os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_allowed_origins,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+SETTINGS_FILE = Path(__file__).parent / "settings.json"
+chat_engine = ChatEngine()
+_scanned_files: list[dict] = []
+_project_path: str = ""
+
+# --- 設定管理 ---
+
+def _load_settings() -> dict:
+    if SETTINGS_FILE.exists():
+        return json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
+    return {
+        "provider": "claude",
+        "api_key": "",
+        "model": "",
+        "ollama_url": "http://localhost:11434",
+    }
+
+
+def _save_settings(data: dict):
+    SETTINGS_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _get_provider():
+    s = _load_settings()
+    provider = s.get("provider", "claude")
+    api_key = s.get("api_key", "")
+    model = s.get("model", "")
+    if provider == "claude":
+        return ClaudeProvider(api_key=api_key, model=model or "claude-sonnet-4-6")
+    if provider == "openai":
+        return OpenAIProvider(api_key=api_key, model=model or "gpt-4o")
+    if provider == "deepseek":
+        return DeepSeekProvider(api_key=api_key, model=model or "deepseek-chat")
+    if provider == "ollama":
+        return OllamaProvider(
+            base_url=s.get("ollama_url", "http://localhost:11434"),
+            model=model or "llama3.2",
+        )
+    raise HTTPException(status_code=400, detail=f"未知的 provider: {provider}")
+
+# --- Request models ---
+
+class ScanRequest(BaseModel):
+    path: str
+
+class ChatRequest(BaseModel):
+    message: str
+
+class QuizGradeRequest(BaseModel):
+    question: str
+    answer: str
+
+class ExplainRequest(BaseModel):
+    title: str
+    content: str
+
+class SettingsModel(BaseModel):
+    provider: str
+    api_key: str
+    model: str = ""
+    ollama_url: str = "http://localhost:11434"
+
+# --- Endpoints ---
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/api/browse")
+async def browse():
+    if not _TKINTER_AVAILABLE:
+        return {"path": ""}
+    loop = asyncio.get_event_loop()
+
+    def _pick():
+        root = tk.Tk()
+        root.withdraw()
+        root.wm_attributes("-topmost", True)
+        path = filedialog.askdirectory(title="選擇專案資料夾")
+        root.destroy()
+        return path or ""
+
+    path = await loop.run_in_executor(None, _pick)
+    return {"path": path}
+
+
+@app.post("/api/scan")
+def scan(req: ScanRequest):
+    global _scanned_files, _project_path
+    if not os.path.isdir(req.path):
+        raise HTTPException(status_code=400, detail="路徑不存在或不是目錄")
+    _project_path = req.path
+    _scanned_files = scan_directory(req.path)
+    chat_engine.context = ""
+
+    # 載入快取，填入未過期的 description
+    cached = load_cache(req.path)
+    cached_count = 0
+    for f in _scanned_files:
+        entry = cached.get(f["path"])
+        if entry and not is_stale(entry, f["mtime"], f["size"]):
+            f["description"] = entry["description"]
+            f["from_cache"] = True
+            cached_count += 1
+        else:
+            f["from_cache"] = False
+
+    return {"files": _scanned_files, "total": len(_scanned_files), "cached_count": cached_count}
+
+
+@app.post("/api/analyze")
+async def analyze():
+    if not _scanned_files:
+        raise HTTPException(status_code=400, detail="請先執行掃描")
+    provider = _get_provider()
+
+    # 只分析沒有 description 的檔案
+    to_analyze = [f for f in _scanned_files if not f.get("description")]
+
+    if not to_analyze:
+        async def stream_skip():
+            yield 'data: {"done": true, "skipped": true}\n\n'
+        return StreamingResponse(stream_skip(), media_type="text/event-stream")
+
+    async def stream():
+        async for result in analyze_files(to_analyze, provider, _project_path):
+            for f in _scanned_files:
+                if f["path"] == result["path"]:
+                    f["description"] = result["description"]
+                    f["from_cache"] = False
+                    break
+            yield f"data: {json.dumps(result, ensure_ascii=False)}\n\n"
+        save_cache(_project_path, _scanned_files)
+        yield 'data: {"done": true}\n\n'
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+def _reports_context_hash(files: list[dict]) -> str:
+    blob = "".join(f.get("description", "") for f in sorted(files, key=lambda x: x["path"]))
+    return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+
+@app.post("/api/report/generate")
+async def report_generate():
+    if not _scanned_files:
+        raise HTTPException(status_code=400, detail="請先執行掃描")
+    analyzed = [f for f in _scanned_files if f.get("description")]
+    if not analyzed:
+        raise HTTPException(status_code=400, detail="請先完成分析")
+
+    context_hash = _reports_context_hash(analyzed)
+    cached = load_reports(_project_path)
+
+    if cached.get("context_hash") == context_hash and cached.get("data"):
+        async def stream_cached():
+            for idx, content in enumerate(cached["data"]):
+                chunk_size = 800
+                for i in range(0, len(content), chunk_size):
+                    yield f"data: {json.dumps({'report': idx, 'chunk': content[i:i+chunk_size]}, ensure_ascii=False)}\n\n"
+                    await asyncio.sleep(0)
+            yield 'data: {"done": true}\n\n'
+        return StreamingResponse(stream_cached(), media_type="text/event-stream")
+
+    provider = _get_provider()
+    project_name = Path(_project_path).name
+    collected: list[str] = ["", ""]
+
+    async def stream():
+        async for idx, chunk in generate_reports(analyzed, project_name, provider):
+            collected[idx] += chunk
+            yield f"data: {json.dumps({'report': idx, 'chunk': chunk}, ensure_ascii=False)}\n\n"
+        save_reports(_project_path, context_hash, collected)
+        yield 'data: {"done": true}\n\n'
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.post("/api/chat")
+async def chat(req: ChatRequest):
+    if not _scanned_files:
+        raise HTTPException(status_code=400, detail="請先執行分析")
+    provider = _get_provider()
+    context = get_context_summary(_scanned_files)
+    if context != chat_engine.context:
+        chat_engine.set_context(context)
+
+    async def stream():
+        async for chunk in chat_engine.send(req.message, provider):
+            yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+        yield 'data: {"done": true}\n\n'
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.post("/api/chat/clear")
+def chat_clear():
+    chat_engine.clear()
+    return {"status": "cleared"}
+
+
+@app.get("/api/settings")
+def get_settings():
+    return _load_settings()
+
+
+@app.put("/api/settings")
+def update_settings(settings: SettingsModel):
+    _save_settings(settings.model_dump())
+    return {"status": "saved"}
+
+
+@app.post("/api/explain")
+async def explain(req: ExplainRequest):
+    provider = _get_provider()
+    prompt = (
+        "以下是一段技術說明，請用國中生能理解的語言，加入具體的生活比喻重新解釋。\n\n"
+        f"標題：{req.title}\n"
+        f"內容：{req.content}\n\n"
+        "用 3~5 句話說明，要有具體的生活比喻，讓完全不懂技術的人也能懂。直接開始說明，不要加前言。"
+    )
+
+    async def stream():
+        async for chunk in provider.generate(prompt):
+            yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+        yield 'data: {"done": true}\n\n'
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.post("/api/quiz/generate")
+async def quiz_generate():
+    if not _scanned_files:
+        raise HTTPException(status_code=400, detail="請先執行分析")
+    context = get_context_summary(_scanned_files)
+    if not context.strip():
+        raise HTTPException(status_code=400, detail="尚未有分析結果，請先完成分析")
+    provider = _get_provider()
+    questions = await generate_questions(context, provider)
+    return {"questions": questions}
+
+
+@app.post("/api/quiz/grade")
+async def quiz_grade(req: QuizGradeRequest):
+    if not _scanned_files:
+        raise HTTPException(status_code=400, detail="請先執行分析")
+    context = get_context_summary(_scanned_files)
+    provider = _get_provider()
+    result = await grade_answer(req.question, req.answer, context, provider)
+    return result
