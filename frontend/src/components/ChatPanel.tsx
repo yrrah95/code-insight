@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ChatMessage } from '../types';
+import { useT } from '../i18n/LocaleContext';
 
 interface Props {
   messages: ChatMessage[];
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function ChatPanel({ messages, isChatting, disabled, onSend, onClear }: Props) {
+  const t = useT();
   const [input, setInput] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -37,13 +39,13 @@ export default function ChatPanel({ messages, isChatting, disabled, onSend, onCl
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-800 flex-shrink-0">
-        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">AI 問答</span>
+        <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('chatHeader')}</span>
         {messages.length > 0 && (
           <button
             onClick={onClear}
             className="text-xs text-gray-600 hover:text-gray-400 transition-colors"
           >
-            清除對話
+            {t('clearChat')}
           </button>
         )}
       </div>
@@ -52,13 +54,13 @@ export default function ChatPanel({ messages, isChatting, disabled, onSend, onCl
         {messages.length === 0 && !disabled && (
           <div className="text-center text-gray-600 text-xs mt-8">
             <p className="mb-2 text-2xl">💬</p>
-            <p>分析完成後，你可以在這裡問任何關於這個專案的問題</p>
-            <p className="mt-2 text-gray-700">例如：「入口點在哪？」「這個 service 做什麼？」</p>
+            <p>{t('chatEmptyTitle')}</p>
+            <p className="mt-2 text-gray-700">{t('chatEmptyHint')}</p>
           </div>
         )}
         {disabled && messages.length === 0 && (
           <div className="text-center text-gray-600 text-xs mt-8">
-            <p>請先掃描並分析專案</p>
+            <p>{t('chatDisabled')}</p>
           </div>
         )}
         {messages.map((msg, i) => (
@@ -98,7 +100,7 @@ export default function ChatPanel({ messages, isChatting, disabled, onSend, onCl
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled || isChatting}
-          placeholder={disabled ? '請先完成分析' : '輸入問題... (Enter 送出)'}
+          placeholder={disabled ? t('chatPlaceholderDisabled') : t('chatPlaceholder')}
           rows={2}
           className="flex-1 bg-gray-800 text-gray-200 text-xs rounded-lg px-3 py-2 resize-none border border-gray-700 focus:outline-none focus:border-violet-500 placeholder-gray-600 disabled:opacity-40"
         />
@@ -107,7 +109,7 @@ export default function ChatPanel({ messages, isChatting, disabled, onSend, onCl
           disabled={disabled || isChatting || !input.trim()}
           className="bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs px-3 py-2 rounded-lg transition-colors flex-shrink-0"
         >
-          {isChatting ? '⏳' : '送出'}
+          {isChatting ? '⏳' : t('sendBtn')}
         </button>
       </form>
     </div>

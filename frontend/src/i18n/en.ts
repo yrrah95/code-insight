@@ -1,0 +1,92 @@
+import type { zh } from './zh';
+
+export const en: { [K in keyof typeof zh]: string } = {
+  // App — toolbar
+  pathPlaceholder: 'Enter project folder path, e.g. C:\\my-project',
+  chooseFolderTitle: 'Choose Folder',
+  scanBtn: '📂 Scan',
+  scanning: 'Scanning...',
+  analyzeBtn: '✨ Analyze',
+  analyzingProgress: 'Analyzing {current}/{total}',
+  filesCount: '{count} files',
+  analyzedCount: '{count} analyzed',
+  cachedCountLabel: '{count} cached',
+  quizBtn: '🎯 Quiz',
+  quizModeTitle: 'Quiz Mode',
+  settingsTitle: 'LLM Settings',
+  fileStructure: 'File Structure',
+  allUpToDate: 'All files up to date, no re-analysis needed',
+  chatError: 'Error: {message}',
+
+  // FileTree
+  fileTreeEmpty: 'Enter a project path and scan to see files here',
+
+  // ReportView — tabs & status
+  reportTab0: 'Technical Report',
+  reportTab1: 'Business Summary',
+  reportEmpty0: 'Scan and analyze a project to',
+  reportEmpty1: 'auto-generate two reports',
+  analyzingFiles: 'Analyzing files... {current} / {total}',
+  writingReport: 'Writing report {n} / 2 ({name})...',
+  waitingReport: 'Waiting for report {n}...',
+  writing: 'Writing...',
+  notGenerated: 'Not generated',
+  notAnalyzed: 'Not analyzed',
+  exportBtn: '↓ Export',
+  exportTitle: 'Export as Markdown',
+
+  // AnalogyBlock
+  analogyBtn: '💡 Explain Simply',
+  reExplainBtn: '🔄 Re-explain',
+  explaining: 'Explaining...',
+  connectionFailed: 'Connection failed, please ensure backend is running',
+
+  // ChatPanel
+  chatHeader: 'AI Q&A',
+  clearChat: 'Clear Chat',
+  chatEmptyTitle: 'After analysis, ask anything about this project here',
+  chatEmptyHint: 'E.g.: "Where\'s the entry point?" "What does this service do?"',
+  chatDisabled: 'Please scan and analyze a project first',
+  chatPlaceholderDisabled: 'Complete analysis first',
+  chatPlaceholder: 'Ask a question... (Enter to send)',
+  sendBtn: 'Send',
+
+  // QuizPanel
+  quizHeader: '🎯 Quiz Mode',
+  restart: 'Restart',
+  quizReadyTitle: 'Ready to test your understanding of this project?',
+  quizReadyDesc: 'AI will generate 5 Q&A questions from four angles and grade your answers',
+  startQuiz: 'Start Quiz',
+  generating: 'AI is generating questions...',
+  questionProgress: 'Question {current} / {total}',
+  answerPlaceholder: 'Enter your answer...',
+  submitAnswer: 'Submit Answer',
+  grading: 'AI is grading...',
+  scoreLabel: 'Score: {score}',
+  nextQuestion: 'Next →',
+  viewSummary: 'View Summary',
+  totalScore: 'Total Score: {score}',
+  highScore: 'Very familiar with this project!',
+  midScore: 'Good understanding, keep it up!',
+  lowScore: 'Review the reports and try again!',
+  retakeQuiz: 'Take Quiz Again',
+  verdictCorrect: '✓ Correct',
+  verdictPartial: '△ Partially Correct',
+  verdictIncorrect: '✗ Incorrect',
+  scopeFileFunction: 'File Functionality',
+  scopeTechSelection: 'Tech Selection',
+  scopeWorkflow: 'Workflow',
+  scopeRelationship: 'Relationships',
+
+  // SettingsModal
+  settingsModalTitle: 'LLM Settings',
+  providerLabel: 'Provider',
+  ollamaLocalLabel: 'Ollama (Local)',
+  modelLabel: 'Model Name',
+  modelDefault: '(Leave blank to use default: {placeholder})',
+  cancelBtn: 'Cancel',
+  saveBtn: 'Save',
+  savingBtn: 'Saving...',
+  savedBtn: '✓ Saved',
+  saveFailed: 'Save failed: {message}',
+};

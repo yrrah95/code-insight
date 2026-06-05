@@ -6,6 +6,7 @@ import ChatPanel from './components/ChatPanel';
 import QuizPanel from './components/QuizPanel';
 import SettingsModal from './components/SettingsModal';
 import type { FileItem, ChatMessage } from './types';
+import { useLocale, useT } from './i18n/LocaleContext';
 
 function ResizeDivider({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
   return (
@@ -17,6 +18,9 @@ function ResizeDivider({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => 
 }
 
 export default function App() {
+  const t = useT();
+  const { locale, toggle } = useLocale();
+
   const [projectPath, setProjectPath] = useState('');
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isScanning, setIsScanning] = useState(false);
@@ -107,7 +111,7 @@ export default function App() {
         },
         async (skipped) => {
           setIsAnalyzing(false);
-          if (skipped) { setError('所有檔案均為最新，無需重新分析'); return; }
+          if (skipped) { setError(t('allUpToDate')); return; }
           setReports(['', '']);
           setGeneratingReportIndex(0);
           try {
@@ -167,7 +171,7 @@ export default function App() {
     } catch (e) {
       setChatMessages(prev => {
         const msgs = [...prev];
-        msgs[msgs.length - 1] = { role: 'assistant', content: `錯誤：${(e as Error).message}` };
+        msgs[msgs.length - 1] = { role: 'assistant', content: t('chatError', { message: (e as Error).message }) };
         return msgs;
       });
       setIsChatting(false);
@@ -196,7 +200,7 @@ export default function App() {
             value={projectPath}
             onChange={e => setProjectPath(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') handleScan(); }}
-            placeholder="輸入專案資料夾路徑，例如 C:\my-project"
+            placeholder={t('pathPlaceholder')}
             className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-violet-500 placeholder-gray-600"
           />
           <button
@@ -206,7 +210,7 @@ export default function App() {
             }}
             disabled={isScanning}
             className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-200 text-xs px-2.5 py-1.5 rounded-lg transition-colors"
-            title="選擇資料夾"
+            title={t('chooseFolderTitle')}
           >
             📁
           </button>
@@ -215,14 +219,16 @@ export default function App() {
             disabled={isScanning || !projectPath.trim()}
             className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-200 text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
           >
-            {isScanning ? '掃描中...' : '📂 掃描'}
+            {isScanning ? t('scanning') : t('scanBtn')}
           </button>
           <button
             onClick={handleAnalyze}
             disabled={isAnalyzing || files.length === 0}
             className="bg-violet-700 hover:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
           >
-            {isAnalyzing ? `分析中 ${analyzeProgress.current}/${analyzeProgress.total}` : '✨ 分析'}
+            {isAnalyzing
+              ? t('analyzingProgress', { current: analyzeProgress.current, total: analyzeProgress.total })
+              : t('analyzeBtn')}
           </button>
         </div>
 
@@ -233,10 +239,10 @@ export default function App() {
         <div className="ml-auto flex items-center gap-3">
           {files.length > 0 && (
             <span className="text-xs text-gray-500">
-              {files.length} 個檔案
-              {hasAnalysis && ` · ${files.filter(f => f.description).length} 已分析`}
+              {t('filesCount', { count: files.length })}
+              {hasAnalysis && ` · ${t('analyzedCount', { count: files.filter(f => f.description).length })}`}
               {cachedCount > 0 && !isAnalyzing && (
-                <span className="text-green-500 ml-1">· {cachedCount} 來自快取</span>
+                <span className="text-green-500 ml-1">· {t('cachedCountLabel', { count: cachedCount })}</span>
               )}
             </span>
           )}
@@ -244,14 +250,21 @@ export default function App() {
             onClick={() => setShowQuiz(q => !q)}
             disabled={!hasAnalysis}
             className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${showQuiz ? 'bg-amber-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}
-            title="測驗模式"
+            title={t('quizModeTitle')}
           >
-            🎯 測驗
+            {t('quizBtn')}
+          </button>
+          <button
+            onClick={toggle}
+            className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-2 py-1 rounded border border-gray-700 hover:border-gray-500"
+            title={locale === 'zh' ? 'Switch to English' : '切換為繁體中文'}
+          >
+            {locale === 'zh' ? 'EN' : '繁中'}
           </button>
           <button
             onClick={() => setShowSettings(true)}
             className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
-            title="LLM 設定"
+            title={t('settingsTitle')}
           >
             ⚙️
           </button>
@@ -263,7 +276,7 @@ export default function App() {
         {/* 左側：檔案樹 */}
         <aside style={{ width: leftWidth }} className="flex-shrink-0 bg-gray-900 overflow-hidden flex flex-col">
           <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">檔案結構</span>
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('fileStructure')}</span>
           </div>
           <FileTree files={files} selectedPath={selectedPath} onFileClick={handleFileClick} />
         </aside>

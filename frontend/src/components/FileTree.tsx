@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { FileItem } from '../types';
+import { useT } from '../i18n/LocaleContext';
 
 interface Props {
   files: FileItem[];
@@ -27,6 +28,7 @@ const CATEGORY_ICONS: Record<string, string> = {
 };
 
 export default function FileTree({ files, selectedPath, onFileClick }: Props) {
+  const t = useT();
   const [openCats, setOpenCats] = useState<Record<string, boolean>>({});
 
   const byCategory = files.reduce<Record<string, FileItem[]>>((acc, f) => {
@@ -50,7 +52,7 @@ export default function FileTree({ files, selectedPath, onFileClick }: Props) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm p-4 text-center">
         <span className="text-3xl mb-2">📂</span>
-        <p>輸入專案路徑並掃描，檔案列表會出現在這裡</p>
+        <p>{t('fileTreeEmpty')}</p>
       </div>
     );
   }

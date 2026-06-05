@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { api } from '../api/client';
 import type { FileItem } from '../types';
+import { useT } from '../i18n/LocaleContext';
 
 interface Props {
   reports: [string, string];
@@ -17,7 +18,6 @@ interface Props {
   onFileTabClose: (path: string) => void;
 }
 
-const REPORT_TABS = ['技術報告', '業務說明'] as const;
 
 const PROSE_BASE = `prose prose-invert prose-sm break-words
   [&_table]:block [&_table]:overflow-x-auto [&_pre]:overflow-x-auto [&_img]:max-w-full
@@ -60,6 +60,7 @@ function AnalogyBlock({ aKey, title, content, analogy, loading, error, onExplain
   error?: string;
   onExplain: (key: string, title: string, content: string) => void;
 }) {
+  const t = useT();
   return (
     <div className="not-prose mt-4 pt-3 border-t border-gray-700/50 flex flex-col gap-2">
       <button
@@ -69,7 +70,7 @@ function AnalogyBlock({ aKey, title, content, analogy, loading, error, onExplain
           bg-amber-900/30 hover:bg-amber-800/40 border border-amber-700/40
           text-amber-300 transition-colors disabled:opacity-50"
       >
-        {loading ? '解釋中...' : (analogy || error) ? '🔄 重新解釋' : '💡 比喻解釋'}
+        {loading ? t('explaining') : (analogy || error) ? t('reExplainBtn') : t('analogyBtn')}
       </button>
       {error && (
         <div className="text-xs text-red-400 bg-red-900/20 rounded px-3 py-2 border border-red-800/30">
@@ -102,6 +103,8 @@ export default function ReportView({
   files, onFileClick,
   openFilePaths, activeTab, onTabChange, onFileTabClose,
 }: Props) {
+  const t = useT();
+  const reportTabLabels = [t('reportTab0'), t('reportTab1')];
   const [expanded, setExpanded] = useState<Record<string, Set<number>>>({});
   const [analogies, setAnalogies] = useState<Record<string, string>>({});
   const [analogyLoading, setAnalogyLoading] = useState<Record<string, boolean>>({});
@@ -148,11 +151,11 @@ export default function ReportView({
       );
     } catch (err) {
       console.error('[比喻解釋] 失敗', err);
-      const msg = err instanceof Error ? err.message : '連線失敗，請確認後端已啟動';
+      const msg = err instanceof Error ? err.message : t('connectionFailed');
       setAnalogyErrors(prev => ({ ...prev, [key]: msg }));
       setAnalogyLoading(prev => ({ ...prev, [key]: false }));
     }
-  }, []);
+  }, [t]);
 
   const pct = analyzeProgress.total > 0
     ? Math.round((analyzeProgress.current / analyzeProgress.total) * 100)
@@ -195,8 +198,8 @@ export default function ReportView({
     return (
       <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm text-center p-8">
         <span className="text-5xl mb-4">📋</span>
-        <p className="text-gray-400 mb-1">掃描並分析專案後，</p>
-        <p>將自動產生兩份技術報告</p>
+        <p className="text-gray-400 mb-1">{t('reportEmpty0')}</p>
+        <p>{t('reportEmpty1')}</p>
       </div>
     );
   }
@@ -206,7 +209,7 @@ export default function ReportView({
       {isAnalyzing && (
         <div className="flex-shrink-0 bg-gray-900 border-b border-gray-800 px-4 py-2">
           <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
-            <span>逐檔分析中... {analyzeProgress.current} / {analyzeProgress.total} 檔案</span>
+            <span>{t('analyzingFiles', { current: analyzeProgress.current, total: analyzeProgress.total })}</span>
             <span>{pct}%</span>
           </div>
           <div className="w-full bg-gray-800 rounded-full h-1">
@@ -219,7 +222,7 @@ export default function ReportView({
         <div className="flex-shrink-0 bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center gap-2">
           <span className="text-xs text-amber-400 animate-pulse">✦</span>
           <span className="text-xs text-gray-400">
-            正在撰寫第 {generatingReportIndex + 1} / 2 份報告（{REPORT_TABS[generatingReportIndex as 0 | 1]}）...
+            {t('writingReport', { n: generatingReportIndex + 1, name: reportTabLabels[generatingReportIndex as 0 | 1] })}
           </span>
         </div>
       )}
@@ -227,7 +230,7 @@ export default function ReportView({
       {/* 頁籤列 */}
       <div className="flex-shrink-0 flex items-center border-b border-gray-800 bg-gray-900/50 overflow-x-auto">
         <div className="flex min-w-0">
-          {REPORT_TABS.map((label, i) => (
+          {reportTabLabels.map((label, i) => (
             <button
               key={i}
               onClick={() => onTabChange(`report-${i}`)}
@@ -279,14 +282,14 @@ export default function ReportView({
               const url = URL.createObjectURL(blob);
               const a = document.createElement('a');
               a.href = url;
-              a.download = `${REPORT_TABS[reportIndex]}.md`;
+              a.download = `${reportTabLabels[reportIndex]}.md`;
               a.click();
               URL.revokeObjectURL(url);
             }}
             className="ml-auto mr-3 flex-shrink-0 text-xs text-gray-500 hover:text-gray-200 transition-colors px-2 py-1 rounded hover:bg-gray-800"
-            title="匯出為 Markdown"
+            title={t('exportTitle')}
           >
-            ↓ 匯出
+            {t('exportBtn')}
           </button>
         )}
       </div>
@@ -358,10 +361,10 @@ export default function ReportView({
           })() : (
             <div className="flex items-center justify-center h-full text-gray-600 text-sm">
               {generatingReportIndex !== null && generatingReportIndex < reportIndex
-                ? `等待第 ${reportIndex + 1} 份報告產生...`
+                ? t('waitingReport', { n: reportIndex + 1 })
                 : generatingReportIndex === reportIndex
-                ? '撰寫中...'
-                : '尚未產生'}
+                ? t('writing')
+                : t('notGenerated')}
             </div>
           )
         ) : (
@@ -426,7 +429,7 @@ export default function ReportView({
                     </div>
                   );
                 })() : (
-                  <span className="text-gray-600 text-sm">尚未分析</span>
+                  <span className="text-gray-600 text-sm">{t('notAnalyzed')}</span>
                 )}
               </div>
             );

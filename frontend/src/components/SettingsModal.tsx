@@ -1,19 +1,14 @@
 import { useEffect, useState } from 'react';
 import type { Settings } from '../types';
 import { api } from '../api/client';
+import { useT } from '../i18n/LocaleContext';
 
 interface Props {
   onClose: () => void;
 }
 
-const PROVIDERS = [
-  { value: 'claude', label: 'Claude (Anthropic)', modelPlaceholder: 'claude-sonnet-4-6' },
-  { value: 'openai', label: 'OpenAI (GPT)', modelPlaceholder: 'gpt-4o' },
-  { value: 'deepseek', label: 'DeepSeek', modelPlaceholder: 'deepseek-chat' },
-  { value: 'ollama', label: 'Ollama (本地)', modelPlaceholder: 'llama3.2' },
-];
-
 export default function SettingsModal({ onClose }: Props) {
+  const t = useT();
   const [settings, setSettings] = useState<Settings>({
     provider: 'claude',
     api_key: '',
@@ -22,6 +17,13 @@ export default function SettingsModal({ onClose }: Props) {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  const PROVIDERS = [
+    { value: 'claude', label: 'Claude (Anthropic)', modelPlaceholder: 'claude-sonnet-4-6' },
+    { value: 'openai', label: 'OpenAI (GPT)', modelPlaceholder: 'gpt-4o' },
+    { value: 'deepseek', label: 'DeepSeek', modelPlaceholder: 'deepseek-chat' },
+    { value: 'ollama', label: t('ollamaLocalLabel'), modelPlaceholder: 'llama3.2' },
+  ];
 
   useEffect(() => {
     api.getSettings().then(setSettings).catch(() => {});
@@ -34,7 +36,7 @@ export default function SettingsModal({ onClose }: Props) {
       setSaved(true);
       setTimeout(() => { setSaved(false); onClose(); }, 800);
     } catch (e) {
-      alert('儲存失敗：' + (e as Error).message);
+      alert(t('saveFailed', { message: (e as Error).message }));
     } finally {
       setSaving(false);
     }
@@ -49,13 +51,13 @@ export default function SettingsModal({ onClose }: Props) {
     >
       <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-gray-100 font-semibold text-base">LLM 設定</h2>
+          <h2 className="text-gray-100 font-semibold text-base">{t('settingsModalTitle')}</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-xl leading-none">×</button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">提供商</label>
+            <label className="block text-xs text-gray-400 mb-1.5">{t('providerLabel')}</label>
             <div className="grid grid-cols-2 gap-2">
               {PROVIDERS.map(p => (
                 <button
@@ -101,7 +103,7 @@ export default function SettingsModal({ onClose }: Props) {
 
           <div>
             <label className="block text-xs text-gray-400 mb-1.5">
-              模型名稱 <span className="text-gray-600">（留空使用預設：{currentProvider.modelPlaceholder}）</span>
+              {t('modelLabel')} <span className="text-gray-600">{t('modelDefault', { placeholder: currentProvider.modelPlaceholder })}</span>
             </label>
             <input
               type="text"
@@ -118,14 +120,14 @@ export default function SettingsModal({ onClose }: Props) {
             onClick={onClose}
             className="flex-1 py-2 rounded-lg border border-gray-700 text-xs text-gray-400 hover:text-gray-200 hover:border-gray-600 transition-colors"
           >
-            取消
+            {t('cancelBtn')}
           </button>
           <button
             onClick={handleSave}
             disabled={saving}
             className="flex-1 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white text-xs font-medium transition-colors"
           >
-            {saved ? '✓ 已儲存' : saving ? '儲存中...' : '儲存'}
+            {saved ? t('savedBtn') : saving ? t('savingBtn') : t('saveBtn')}
           </button>
         </div>
       </div>
