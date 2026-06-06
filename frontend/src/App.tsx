@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Search, FolderOpen, Sparkles, GraduationCap, Settings,
   ChevronRight, Loader2, GitFork, History, SearchIcon,
-  DownloadCloud, Trash2, X,
+  DownloadCloud, Trash2, X, FileText,
 } from 'lucide-react';
 import { api } from './api/client';
 import FileTree from './components/FileTree';
@@ -49,6 +49,7 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [projectHistory, setProjectHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [toast, setToast] = useState('');
 
   const historyRef = useRef<HTMLDivElement>(null);
 
@@ -272,6 +273,25 @@ export default function App() {
     }
   };
 
+  const handleExportCodebaseMd = async () => {
+    try {
+      const { content, saved_to_project } = await api.exportCodebaseMd();
+      const blob = new Blob([content], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'CODEBASE.md';
+      a.click();
+      URL.revokeObjectURL(url);
+      if (saved_to_project) {
+        setToast(t('codebaseMdSaved'));
+        setTimeout(() => setToast(''), 4000);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   const hasAnalysis = files.some(f => f.description);
 
   const displayFiles = useMemo(() => {
@@ -399,6 +419,9 @@ export default function App() {
         {error && (
           <span className="text-red-600 text-xs max-w-xs truncate bg-red-50 border border-red-200 px-2 py-1 rounded-md">{error}</span>
         )}
+        {toast && (
+          <span className="text-emerald-700 text-xs max-w-xs truncate bg-emerald-50 border border-emerald-200 px-2 py-1 rounded-md">{toast}</span>
+        )}
 
         {/* Right actions */}
         <div className="ml-auto flex items-center gap-2">
@@ -421,6 +444,17 @@ export default function App() {
                 </span>
               )}
             </span>
+          )}
+
+          {hasAnalysis && (
+            <button
+              onClick={handleExportCodebaseMd}
+              className="flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg transition-colors bg-white border border-gray-300 text-gray-500 hover:bg-gray-50 font-medium"
+              title={t('codebaseMdTitle')}
+            >
+              <FileText size={12} />
+              {t('codebaseMdBtn')}
+            </button>
           )}
 
           {hasAnalysis && (

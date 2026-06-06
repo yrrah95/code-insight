@@ -26,6 +26,9 @@ export const zh = {
   exportZipBtn: 'ZIP',
   exportZipTitle: '匯出完整分析（ZIP）',
   notificationBody: '分析完成！報告已產生',
+  codebaseMdBtn: 'CODEBASE.md',
+  codebaseMdTitle: '一鍵生成 CODEBASE.md 並存入專案',
+  codebaseMdSaved: 'CODEBASE.md 已存入專案目錄，可直接 commit',
 
   // Search
   searchPlaceholder: '搜尋檔案...',

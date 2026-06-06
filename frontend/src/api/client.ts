@@ -147,6 +147,12 @@ export const api = {
     return res.blob();
   },
 
+  async exportCodebaseMd(): Promise<{ content: string; saved_to_project: boolean }> {
+    const res = await fetch(`${BASE}/api/export/codebase-md`);
+    await throwIfError(res);
+    return res.json();
+  },
+
   async getSettings() {
     const res = await fetch(`${BASE}/api/settings`);
     return res.json();

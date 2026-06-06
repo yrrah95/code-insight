@@ -28,6 +28,9 @@ export const en: { [K in keyof typeof zh]: string } = {
   exportZipBtn: 'ZIP',
   exportZipTitle: 'Export Full Analysis (ZIP)',
   notificationBody: 'Analysis complete! Reports generated',
+  codebaseMdBtn: 'CODEBASE.md',
+  codebaseMdTitle: 'Generate CODEBASE.md and save to project',
+  codebaseMdSaved: 'CODEBASE.md saved to project directory, ready to commit',
 
   // Search
   searchPlaceholder: 'Search files...',
