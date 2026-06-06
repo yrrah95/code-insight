@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { Download, Lightbulb, RefreshCw, ChevronDown, FileText, Loader2 } from 'lucide-react';
 import { api } from '../api/client';
 import type { FileItem } from '../types';
 import { useT } from '../i18n/LocaleContext';
@@ -18,13 +19,14 @@ interface Props {
   onFileTabClose: (path: string) => void;
 }
 
-
-const PROSE_BASE = `prose prose-invert prose-sm break-words
+const PROSE_BASE = `prose prose-sm max-w-none break-words
   [&_table]:block [&_table]:overflow-x-auto [&_pre]:overflow-x-auto [&_img]:max-w-full
-  prose-headings:text-gray-100 prose-h1:text-lg prose-h2:text-base
-  prose-p:text-gray-300 prose-li:text-gray-300 prose-strong:text-gray-200
-  prose-code:text-violet-300 prose-pre:bg-gray-900
-  prose-a:text-violet-400 prose-th:text-gray-300 prose-td:text-gray-400`;
+  prose-headings:text-gray-900 prose-h1:text-lg prose-h2:text-base
+  prose-p:text-gray-700 prose-li:text-gray-700 prose-strong:text-gray-900
+  prose-code:text-indigo-700 prose-code:bg-indigo-50 prose-code:rounded prose-code:px-1
+  prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200
+  prose-a:text-indigo-600 prose-th:text-gray-700 prose-td:text-gray-600
+  prose-blockquote:border-indigo-300 prose-blockquote:text-gray-600`;
 
 function parseFileSections(md: string) {
   const parts = md.split(/\n(?=### )/);
@@ -62,24 +64,26 @@ function AnalogyBlock({ aKey, title, content, analogy, loading, error, onExplain
 }) {
   const t = useT();
   return (
-    <div className="not-prose mt-4 pt-3 border-t border-gray-700/50 flex flex-col gap-2">
+    <div className="not-prose mt-4 pt-3 border-t border-gray-100 flex flex-col gap-2">
       <button
         onClick={() => onExplain(aKey, title, content)}
         disabled={loading}
-        className="self-start text-xs px-3 py-1.5 rounded-lg
-          bg-amber-900/30 hover:bg-amber-800/40 border border-amber-700/40
-          text-amber-300 transition-colors disabled:opacity-50"
+        className="self-start flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg
+          bg-amber-50 hover:bg-amber-100 border border-amber-200
+          text-amber-700 transition-colors disabled:opacity-50"
       >
-        {loading ? t('explaining') : (analogy || error) ? t('reExplainBtn') : t('analogyBtn')}
+        {loading
+          ? <Loader2 size={12} className="animate-spin" />
+          : (analogy || error) ? <RefreshCw size={12} /> : <Lightbulb size={12} />}
+        {loading ? t('explaining') : (analogy || error) ? t('reExplainBtn').replace('🔄 ', '') : t('analogyBtn').replace('💡 ', '')}
       </button>
       {error && (
-        <div className="text-xs text-red-400 bg-red-900/20 rounded px-3 py-2 border border-red-800/30">
-          ⚠️ {error}
+        <div className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 border border-red-200">
+          {error}
         </div>
       )}
       {analogy && (
-        <div className="text-sm text-amber-200/80 leading-relaxed
-          bg-amber-900/10 rounded-lg px-4 py-3 border border-amber-700/20">
+        <div className="text-sm text-amber-800 leading-relaxed bg-amber-50 rounded-lg px-4 py-3 border border-amber-200">
           {analogy}
         </div>
       )}
@@ -92,10 +96,10 @@ function TabDot({ tabIndex, generatingReportIndex, content }: {
   generatingReportIndex: number | null;
   content: string;
 }) {
-  if (content) return <span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block" />;
+  if (content) return <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />;
   if (generatingReportIndex !== null && generatingReportIndex >= tabIndex)
     return <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse inline-block" />;
-  return <span className="w-1.5 h-1.5 rounded-full bg-gray-600 inline-block" />;
+  return <span className="w-1.5 h-1.5 rounded-full bg-gray-300 inline-block" />;
 }
 
 export default function ReportView({
@@ -121,10 +125,10 @@ export default function ReportView({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       el.scrollTop = scrollPositions.current.get(activeTab) ?? 0;
     }, 0);
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [activeTab]);
 
   const toggleSection = (tab: string, idx: number) => {
@@ -135,8 +139,7 @@ export default function ReportView({
     });
   };
 
-  const isExpanded = (tab: string, idx: number) =>
-    expanded[tab]?.has(idx) ?? false;
+  const isExpanded = (tab: string, idx: number) => expanded[tab]?.has(idx) ?? false;
 
   const handleExplain = useCallback(async (key: string, title: string, content: string) => {
     setAnalogyLoading(prev => ({ ...prev, [key]: true }));
@@ -183,7 +186,7 @@ export default function ReportView({
         return (
           <button
             onClick={() => onFileClick(match)}
-            className="font-mono text-violet-300 bg-violet-900/30 hover:bg-violet-700/40 border border-violet-700/50 rounded px-1 py-0.5 cursor-pointer transition-colors"
+            className="font-mono text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded px-1 py-0.5 cursor-pointer transition-colors text-xs"
             title={match}
           >
             {children}
@@ -196,10 +199,14 @@ export default function ReportView({
 
   if (!hasAnyReport && !isAnalyzing && generatingReportIndex === null && openFilePaths.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-500 text-sm text-center p-8">
-        <span className="text-5xl mb-4">📋</span>
-        <p className="text-gray-400 mb-1">{t('reportEmpty0')}</p>
-        <p>{t('reportEmpty1')}</p>
+      <div className="flex flex-col items-center justify-center h-full text-center p-8 gap-4">
+        <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center">
+          <FileText size={24} className="text-gray-300" />
+        </div>
+        <div>
+          <p className="text-gray-500 text-sm mb-1">{t('reportEmpty0')}</p>
+          <p className="text-gray-400 text-sm">{t('reportEmpty1')}</p>
+        </div>
       </div>
     );
   }
@@ -207,28 +214,28 @@ export default function ReportView({
   return (
     <div className="flex flex-col h-full">
       {isAnalyzing && (
-        <div className="flex-shrink-0 bg-gray-900 border-b border-gray-800 px-4 py-2">
-          <div className="flex items-center justify-between text-xs text-gray-400 mb-1.5">
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 px-4 py-2.5">
+          <div className="flex items-center justify-between text-xs text-gray-500 mb-1.5">
             <span>{t('analyzingFiles', { current: analyzeProgress.current, total: analyzeProgress.total })}</span>
-            <span>{pct}%</span>
+            <span className="font-medium text-indigo-600">{pct}%</span>
           </div>
-          <div className="w-full bg-gray-800 rounded-full h-1">
-            <div className="bg-violet-500 h-1 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
+          <div className="w-full bg-gray-100 rounded-full h-1">
+            <div className="bg-indigo-500 h-1 rounded-full transition-all duration-300" style={{ width: `${pct}%` }} />
           </div>
         </div>
       )}
 
       {generatingReportIndex !== null && !isAnalyzing && (
-        <div className="flex-shrink-0 bg-gray-900 border-b border-gray-800 px-4 py-2 flex items-center gap-2">
-          <span className="text-xs text-amber-400 animate-pulse">✦</span>
-          <span className="text-xs text-gray-400">
+        <div className="flex-shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2">
+          <Loader2 size={12} className="text-amber-500 animate-spin flex-shrink-0" />
+          <span className="text-xs text-amber-700">
             {t('writingReport', { n: generatingReportIndex + 1, name: reportTabLabels[generatingReportIndex as 0 | 1] })}
           </span>
         </div>
       )}
 
-      {/* 頁籤列 */}
-      <div className="flex-shrink-0 flex items-center border-b border-gray-800 bg-gray-900/50 overflow-x-auto">
+      {/* Tab bar */}
+      <div className="flex-shrink-0 flex items-center border-b border-gray-200 bg-white overflow-x-auto">
         <div className="flex min-w-0">
           {reportTabLabels.map((label, i) => (
             <button
@@ -236,8 +243,8 @@ export default function ReportView({
               onClick={() => onTabChange(`report-${i}`)}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium transition-colors border-b-2 -mb-px whitespace-nowrap flex-shrink-0
                 ${activeTab === `report-${i}`
-                  ? 'border-violet-500 text-gray-100'
-                  : 'border-transparent text-gray-500 hover:text-gray-300'
+                  ? 'border-indigo-500 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
               <TabDot tabIndex={i} generatingReportIndex={generatingReportIndex} content={reports[i]} />
@@ -246,7 +253,7 @@ export default function ReportView({
           ))}
 
           {openFilePaths.length > 0 && (
-            <div className="w-px bg-gray-700 my-2 flex-shrink-0" />
+            <div className="w-px bg-gray-200 my-2 flex-shrink-0 mx-1" />
           )}
 
           {openFilePaths.map(path => (
@@ -254,8 +261,8 @@ export default function ReportView({
               key={path}
               className={`flex items-center gap-0.5 pl-3 pr-1.5 py-2.5 border-b-2 -mb-px flex-shrink-0 transition-colors
                 ${activeTab === path
-                  ? 'border-violet-400 text-gray-100'
-                  : 'border-transparent text-gray-500 hover:text-gray-300'
+                  ? 'border-indigo-500 text-gray-800'
+                  : 'border-transparent text-gray-400 hover:text-gray-600'
                 }`}
             >
               <button
@@ -267,7 +274,7 @@ export default function ReportView({
               </button>
               <button
                 onClick={e => { e.stopPropagation(); onFileTabClose(path); }}
-                className="ml-1 text-gray-600 hover:text-gray-300 transition-colors text-xs leading-none flex-shrink-0"
+                className="ml-1 text-gray-300 hover:text-gray-500 transition-colors text-xs leading-none flex-shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-gray-100"
               >
                 ✕
               </button>
@@ -286,15 +293,16 @@ export default function ReportView({
               a.click();
               URL.revokeObjectURL(url);
             }}
-            className="ml-auto mr-3 flex-shrink-0 text-xs text-gray-500 hover:text-gray-200 transition-colors px-2 py-1 rounded hover:bg-gray-800"
+            className="ml-auto mr-3 flex-shrink-0 flex items-center gap-1 text-xs text-gray-400 hover:text-gray-700 transition-colors px-2 py-1 rounded hover:bg-gray-100"
             title={t('exportTitle')}
           >
-            {t('exportBtn')}
+            <Download size={12} />
+            {t('exportBtn').replace('↓ ', '')}
           </button>
         )}
       </div>
 
-      {/* 內容區域（捲動位置記憶） */}
+      {/* Content */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
@@ -305,7 +313,6 @@ export default function ReportView({
             const { header, sections } = parseReportSections(reports[reportIndex]);
             return (
               <div className="max-w-3xl mx-auto">
-                {/* 報告標題 */}
                 <div className={PROSE_BASE}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
@@ -315,26 +322,23 @@ export default function ReportView({
                   </ReactMarkdown>
                 </div>
 
-                {/* 章節 Accordion */}
                 <div className="mt-4 space-y-2">
                   {sections.map((sec, i) => (
-                    <div key={i} className="border border-gray-800 rounded-lg overflow-hidden">
+                    <div key={i} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
                       <button
                         onClick={() => toggleSection(activeTab, i)}
-                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-900/80 hover:bg-gray-800 transition-colors text-left"
+                        className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors text-left"
                       >
-                        <span className="text-sm font-semibold text-gray-200">{sec.title}</span>
-                        <span
-                          className="text-gray-500 text-xs transition-transform duration-200 flex-shrink-0 ml-2"
-                          style={{ display: 'inline-block', transform: isExpanded(activeTab, i) ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                        >
-                          ▼
-                        </span>
+                        <span className="text-sm font-semibold text-gray-800">{sec.title}</span>
+                        <ChevronDown
+                          size={15}
+                          className={`text-gray-400 transition-transform duration-200 flex-shrink-0 ml-2 ${isExpanded(activeTab, i) ? 'rotate-180' : ''}`}
+                        />
                       </button>
                       {isExpanded(activeTab, i) && (() => {
                         const aKey = `${activeTab}::${i}`;
                         return (
-                          <div className={`px-5 py-4 border-t border-gray-800 ${PROSE_BASE}`}>
+                          <div className={`px-5 py-4 border-t border-gray-100 ${PROSE_BASE}`}>
                             <ReactMarkdown
                               remarkPlugins={[remarkGfm]}
                               components={reportIndex === 0 ? codeComponents : undefined}
@@ -359,7 +363,7 @@ export default function ReportView({
               </div>
             );
           })() : (
-            <div className="flex items-center justify-center h-full text-gray-600 text-sm">
+            <div className="flex items-center justify-center h-full text-gray-400 text-sm">
               {generatingReportIndex !== null && generatingReportIndex < reportIndex
                 ? t('waitingReport', { n: reportIndex + 1 })
                 : generatingReportIndex === reportIndex
@@ -368,16 +372,15 @@ export default function ReportView({
             </div>
           )
         ) : (
-          // 檔案說明頁籤
           (() => {
             const file = files.find(f => f.path === activeTab);
             return (
               <div className="max-w-3xl mx-auto">
-                <div className="mb-5">
-                  <p className="font-mono text-base text-violet-300 mb-1">
+                <div className="mb-5 pb-4 border-b border-gray-100">
+                  <p className="font-mono text-base text-indigo-700 font-medium mb-0.5">
                     {activeTab.split('/').pop()}
                   </p>
-                  <p className="text-xs text-gray-600">{activeTab}</p>
+                  <p className="text-xs text-gray-400 font-mono">{activeTab}</p>
                 </div>
                 {file?.description ? (() => {
                   const fileSecs = parseFileSections(file.description);
@@ -385,23 +388,21 @@ export default function ReportView({
                     return (
                       <div className="space-y-2">
                         {fileSecs.map((sec, i) => (
-                          <div key={i} className="border border-gray-800 rounded-lg overflow-hidden">
+                          <div key={i} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
                             <button
                               onClick={() => toggleSection(activeTab, i)}
-                              className="w-full flex items-center justify-between px-4 py-3 bg-gray-900/80 hover:bg-gray-800 transition-colors text-left"
+                              className="w-full flex items-center justify-between px-4 py-3 bg-white hover:bg-gray-50 transition-colors text-left"
                             >
-                              <span className="text-sm font-semibold text-gray-200">{sec.title}</span>
-                              <span
-                                className="text-gray-500 text-xs flex-shrink-0 ml-2"
-                                style={{ display: 'inline-block', transition: 'transform .2s', transform: isExpanded(activeTab, i) ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                              >▼</span>
+                              <span className="text-sm font-semibold text-gray-800">{sec.title}</span>
+                              <ChevronDown
+                                size={15}
+                                className={`text-gray-400 transition-transform duration-200 flex-shrink-0 ml-2 ${isExpanded(activeTab, i) ? 'rotate-180' : ''}`}
+                              />
                             </button>
                             {isExpanded(activeTab, i) && (() => {
                               const aKey = `${activeTab}::${i}`;
                               return (
-                                <div className="px-5 py-4 border-t border-gray-800 prose prose-invert prose-base break-words
-                                  prose-headings:text-gray-100 prose-p:text-gray-300 prose-li:text-gray-300
-                                  prose-strong:text-gray-200 prose-code:text-violet-300 prose-a:text-violet-400">
+                                <div className={`px-5 py-4 border-t border-gray-100 ${PROSE_BASE}`}>
                                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{sec.content}</ReactMarkdown>
                                   <AnalogyBlock
                                     aKey={aKey}
@@ -421,15 +422,12 @@ export default function ReportView({
                     );
                   }
                   return (
-                    <div className="prose prose-invert prose-base break-words
-                      prose-headings:text-gray-100 prose-h1:text-xl prose-h2:text-lg prose-h3:text-base
-                      prose-p:text-gray-300 prose-li:text-gray-300 prose-strong:text-gray-200
-                      prose-code:text-violet-300 prose-pre:bg-gray-900 prose-a:text-violet-400">
+                    <div className={PROSE_BASE}>
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>{file.description}</ReactMarkdown>
                     </div>
                   );
                 })() : (
-                  <span className="text-gray-600 text-sm">{t('notAnalyzed')}</span>
+                  <span className="text-gray-400 text-sm">{t('notAnalyzed')}</span>
                 )}
               </div>
             );

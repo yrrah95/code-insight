@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import {
+  Search, FolderOpen, Sparkles, GraduationCap, Settings,
+  ChevronRight, Loader2,
+} from 'lucide-react';
 import { api } from './api/client';
 import FileTree from './components/FileTree';
 import ReportView from './components/ReportView';
@@ -12,7 +16,7 @@ function ResizeDivider({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => 
   return (
     <div
       onMouseDown={onMouseDown}
-      className="w-1 flex-shrink-0 bg-gray-800 hover:bg-violet-600 cursor-col-resize transition-colors select-none"
+      className="w-px flex-shrink-0 bg-gray-200 hover:bg-indigo-400 cursor-col-resize transition-colors select-none"
     />
   );
 }
@@ -37,7 +41,7 @@ export default function App() {
   const [showQuiz, setShowQuiz] = useState(false);
   const [cachedCount, setCachedCount] = useState(0);
   const [error, setError] = useState('');
-  const [leftWidth, setLeftWidth] = useState(224);
+  const [leftWidth, setLeftWidth] = useState(232);
   const [rightWidth, setRightWidth] = useState(320);
 
   const makeResizeHandler = (
@@ -186,105 +190,117 @@ export default function App() {
   const hasAnalysis = files.some(f => f.description);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950 text-gray-200 font-sans">
-      {/* 頂部工具列 */}
-      <header className="flex-shrink-0 flex items-center gap-3 px-4 py-2.5 bg-gray-900 border-b border-gray-800">
-        <div className="flex items-center gap-2 mr-2">
-          <span className="text-xl">🔍</span>
-          <span className="font-semibold text-sm text-gray-100">CodeInsight</span>
+    <div className="flex flex-col h-screen bg-slate-50 text-gray-900 font-sans">
+      {/* Header */}
+      <header className="flex-shrink-0 flex items-center gap-3 px-4 py-2 bg-white border-b border-gray-200">
+        {/* Logo */}
+        <div className="flex items-center gap-2 mr-3 flex-shrink-0">
+          <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+            <Search size={14} className="text-white" />
+          </div>
+          <span className="font-semibold text-sm text-gray-900 tracking-tight">CodeInsight</span>
         </div>
 
+        {/* Path input group */}
         <div className="flex-1 flex items-center gap-2 max-w-2xl">
-          <input
-            type="text"
-            value={projectPath}
-            onChange={e => setProjectPath(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') handleScan(); }}
-            placeholder={t('pathPlaceholder')}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-violet-500 placeholder-gray-600"
-          />
-          <button
-            onClick={async () => {
-              const path = await api.browse();
-              if (path) setProjectPath(path);
-            }}
-            disabled={isScanning}
-            className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 text-gray-200 text-xs px-2.5 py-1.5 rounded-lg transition-colors"
-            title={t('chooseFolderTitle')}
-          >
-            📁
-          </button>
+          <div className="flex-1 flex items-center bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+            <input
+              type="text"
+              value={projectPath}
+              onChange={e => setProjectPath(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleScan(); }}
+              placeholder={t('pathPlaceholder')}
+              className="flex-1 px-3 py-1.5 text-xs text-gray-800 bg-transparent focus:outline-none placeholder-gray-400 font-mono"
+            />
+            <button
+              onClick={async () => {
+                const path = await api.browse();
+                if (path) setProjectPath(path);
+              }}
+              disabled={isScanning}
+              className="px-2.5 py-1.5 text-gray-400 hover:text-gray-600 disabled:opacity-40 border-l border-gray-200 transition-colors"
+              title={t('chooseFolderTitle')}
+            >
+              <FolderOpen size={14} />
+            </button>
+          </div>
           <button
             onClick={handleScan}
             disabled={isScanning || !projectPath.trim()}
-            className="bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-gray-200 text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-medium"
           >
-            {isScanning ? t('scanning') : t('scanBtn')}
+            {isScanning ? <Loader2 size={13} className="animate-spin" /> : <ChevronRight size={13} />}
+            {isScanning ? t('scanning') : (locale === 'zh' ? '掃描' : 'Scan')}
           </button>
           <button
             onClick={handleAnalyze}
             disabled={isAnalyzing || files.length === 0}
-            className="bg-violet-700 hover:bg-violet-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
+            className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-medium"
           >
+            {isAnalyzing ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
             {isAnalyzing
               ? t('analyzingProgress', { current: analyzeProgress.current, total: analyzeProgress.total })
-              : t('analyzeBtn')}
+              : (locale === 'zh' ? '分析' : 'Analyze')}
           </button>
         </div>
 
         {error && (
-          <span className="text-red-400 text-xs max-w-xs truncate">{error}</span>
+          <span className="text-red-600 text-xs max-w-xs truncate bg-red-50 border border-red-200 px-2 py-1 rounded-md">{error}</span>
         )}
 
-        <div className="ml-auto flex items-center gap-3">
+        {/* Right actions */}
+        <div className="ml-auto flex items-center gap-2">
           {files.length > 0 && (
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-gray-400 hidden sm:block">
               {t('filesCount', { count: files.length })}
-              {hasAnalysis && ` · ${t('analyzedCount', { count: files.filter(f => f.description).length })}`}
-              {cachedCount > 0 && !isAnalyzing && (
-                <span className="text-green-500 ml-1">· {t('cachedCountLabel', { count: cachedCount })}</span>
-              )}
+              {hasAnalysis && <span className="text-emerald-600"> · {t('analyzedCount', { count: files.filter(f => f.description).length })}</span>}
+              {cachedCount > 0 && !isAnalyzing && <span className="text-sky-500"> · {t('cachedCountLabel', { count: cachedCount })}</span>}
             </span>
           )}
           <button
             onClick={() => setShowQuiz(q => !q)}
             disabled={!hasAnalysis}
-            className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${showQuiz ? 'bg-amber-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}`}
+            className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium ${
+              showQuiz
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}
             title={t('quizModeTitle')}
           >
-            {t('quizBtn')}
+            <GraduationCap size={13} />
+            {locale === 'zh' ? '測驗' : 'Quiz'}
           </button>
           <button
             onClick={toggle}
-            className="text-xs text-gray-500 hover:text-gray-300 transition-colors px-2 py-1 rounded border border-gray-700 hover:border-gray-500"
+            className="text-xs text-gray-500 hover:text-gray-700 transition-colors px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 bg-white"
             title={locale === 'zh' ? 'Switch to English' : '切換為繁體中文'}
           >
             {locale === 'zh' ? 'EN' : '繁中'}
           </button>
           <button
             onClick={() => setShowSettings(true)}
-            className="text-gray-500 hover:text-gray-300 text-sm transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
             title={t('settingsTitle')}
           >
-            ⚙️
+            <Settings size={15} />
           </button>
         </div>
       </header>
 
-      {/* 三欄主體 */}
+      {/* Main layout */}
       <div className="flex flex-1 overflow-hidden">
-        {/* 左側：檔案樹 */}
-        <aside style={{ width: leftWidth }} className="flex-shrink-0 bg-gray-900 overflow-hidden flex flex-col">
-          <div className="px-3 py-2 border-b border-gray-800 flex-shrink-0">
-            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t('fileStructure')}</span>
+        {/* Left: File tree */}
+        <aside style={{ width: leftWidth }} className="flex-shrink-0 bg-white overflow-hidden flex flex-col">
+          <div className="px-3 py-2 border-b border-gray-100 flex-shrink-0">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('fileStructure')}</span>
           </div>
           <FileTree files={files} selectedPath={selectedPath} onFileClick={handleFileClick} />
         </aside>
 
         <ResizeDivider onMouseDown={makeResizeHandler(leftWidth, setLeftWidth, 160, 400, 1)} />
 
-        {/* 中間：報告 */}
-        <main className="flex-1 overflow-hidden bg-gray-950">
+        {/* Center: Report */}
+        <main className="flex-1 overflow-hidden bg-slate-50">
           <ReportView
             reports={reports}
             isAnalyzing={isAnalyzing}
@@ -301,8 +317,8 @@ export default function App() {
 
         <ResizeDivider onMouseDown={makeResizeHandler(rightWidth, setRightWidth, 240, 500, -1)} />
 
-        {/* 右側：聊天 / 測驗 */}
-        <aside style={{ width: rightWidth }} className="flex-shrink-0 bg-gray-900 overflow-hidden flex flex-col">
+        {/* Right: Chat / Quiz */}
+        <aside style={{ width: rightWidth }} className="flex-shrink-0 bg-white overflow-hidden flex flex-col">
           {showQuiz ? (
             <QuizPanel />
           ) : (
