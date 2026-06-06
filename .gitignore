@@ -12,8 +12,10 @@ backend/venv/
 frontend/node_modules/
 frontend/dist/
 
-# CodeInsight 快取
+# CodeInsight 快取與本機資料
 **/.codeinsight.json
+backend/history.json
+backend/clones/
 
 # 環境變數
 .env

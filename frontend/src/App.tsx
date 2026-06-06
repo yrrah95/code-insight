@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Search, FolderOpen, Sparkles, GraduationCap, Settings,
-  ChevronRight, Loader2,
+  ChevronRight, Loader2, GitFork, History, SearchIcon,
+  DownloadCloud, Trash2, X,
 } from 'lucide-react';
 import { api } from './api/client';
 import FileTree from './components/FileTree';
@@ -28,6 +29,8 @@ export default function App() {
   const [projectPath, setProjectPath] = useState('');
   const [files, setFiles] = useState<FileItem[]>([]);
   const [isScanning, setIsScanning] = useState(false);
+  const [isCloning, setIsCloning] = useState(false);
+  const [isGitHubMode, setIsGitHubMode] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState({ current: 0, total: 0 });
   const [reports, setReports] = useState<[string, string]>(['', '']);
@@ -43,6 +46,31 @@ export default function App() {
   const [error, setError] = useState('');
   const [leftWidth, setLeftWidth] = useState(232);
   const [rightWidth, setRightWidth] = useState(320);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [projectHistory, setProjectHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  const historyRef = useRef<HTMLDivElement>(null);
+
+  // 載入歷史紀錄，申請通知權限
+  useEffect(() => {
+    api.getHistory().then(d => setProjectHistory(d.paths)).catch(() => {});
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // 點擊外部關閉歷史下拉
+  useEffect(() => {
+    if (!showHistory) return;
+    const handler = (e: MouseEvent) => {
+      if (historyRef.current && !historyRef.current.contains(e.target as Node)) {
+        setShowHistory(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showHistory]);
 
   const makeResizeHandler = (
     startWidth: number,
@@ -87,15 +115,42 @@ export default function App() {
     setOpenFilePaths([]);
     setActiveTab('report-0');
     setChatMessages([]);
+    setSearchQuery('');
     try {
       const result = await api.scan(projectPath.trim());
+      setFiles(result.files);
+      setCachedCount(result.cached_count ?? 0);
+      setAnalyzeProgress({ current: 0, total: result.total });
+      setProjectHistory(prev => {
+        const next = [projectPath.trim(), ...prev.filter(p => p !== projectPath.trim())].slice(0, 10);
+        return next;
+      });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  const handleClone = async () => {
+    if (!projectPath.trim()) return;
+    setError('');
+    setIsCloning(true);
+    setFiles([]);
+    setReports(['', '']);
+    setOpenFilePaths([]);
+    setActiveTab('report-0');
+    setChatMessages([]);
+    setSearchQuery('');
+    try {
+      const result = await api.cloneRepo(projectPath.trim());
       setFiles(result.files);
       setCachedCount(result.cached_count ?? 0);
       setAnalyzeProgress({ current: 0, total: result.total });
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setIsScanning(false);
+      setIsCloning(false);
     }
   };
 
@@ -128,7 +183,12 @@ export default function App() {
                   return r;
                 });
               },
-              () => setGeneratingReportIndex(null),
+              () => {
+                setGeneratingReportIndex(null);
+                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                  new Notification('CodeInsight', { body: t('notificationBody') });
+                }
+              },
             );
           } catch (e) {
             setError((e as Error).message);
@@ -187,7 +247,41 @@ export default function App() {
     setChatMessages([]);
   };
 
+  const handleClearCache = async () => {
+    try {
+      await api.clearCache();
+      setFiles(prev => prev.map(f => ({ ...f, description: null, from_cache: false })));
+      setCachedCount(0);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
+  const handleExportZip = async () => {
+    try {
+      const blob = await api.exportZip();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const projectName = projectPath.split(/[\\/]/).filter(Boolean).pop() ?? 'project';
+      a.download = `${projectName}-codeinsight.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   const hasAnalysis = files.some(f => f.description);
+
+  const displayFiles = useMemo(() => {
+    if (!searchQuery.trim()) return files;
+    const q = searchQuery.toLowerCase();
+    return files.filter(f =>
+      f.path.toLowerCase().includes(q) ||
+      f.description?.toLowerCase().includes(q)
+    );
+  }, [files, searchQuery]);
 
   return (
     <div className="flex flex-col h-screen bg-slate-50 text-gray-900 font-sans">
@@ -202,36 +296,94 @@ export default function App() {
         </div>
 
         {/* Path input group */}
-        <div className="flex-1 flex items-center gap-2 max-w-2xl">
+        <div className="flex-1 flex items-center gap-2 max-w-2xl relative" ref={historyRef}>
+          {/* History dropdown */}
+          {showHistory && projectHistory.length > 0 && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+              <div className="px-3 py-1.5 border-b border-gray-100">
+                <span className="text-xs text-gray-400 font-medium">{t('recentProjects')}</span>
+              </div>
+              {projectHistory.map(path => (
+                <button
+                  key={path}
+                  onClick={() => {
+                    setProjectPath(path);
+                    setShowHistory(false);
+                    setIsGitHubMode(false);
+                  }}
+                  className="w-full px-3 py-2 text-left text-xs font-mono text-gray-700 hover:bg-gray-50 truncate block"
+                >
+                  {path}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div className="flex-1 flex items-center bg-white border border-gray-300 rounded-lg overflow-hidden focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
             <input
               type="text"
               value={projectPath}
               onChange={e => setProjectPath(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleScan(); }}
-              placeholder={t('pathPlaceholder')}
+              onKeyDown={e => {
+                if (e.key === 'Enter') isGitHubMode ? handleClone() : handleScan();
+              }}
+              placeholder={isGitHubMode ? t('githubUrlPlaceholder') : t('pathPlaceholder')}
               className="flex-1 px-3 py-1.5 text-xs text-gray-800 bg-transparent focus:outline-none placeholder-gray-400 font-mono"
             />
+            {/* GitHub URL toggle */}
             <button
-              onClick={async () => {
-                const path = await api.browse();
-                if (path) setProjectPath(path);
-              }}
-              disabled={isScanning}
-              className="px-2.5 py-1.5 text-gray-400 hover:text-gray-600 disabled:opacity-40 border-l border-gray-200 transition-colors"
-              title={t('chooseFolderTitle')}
+              onClick={() => setIsGitHubMode(m => !m)}
+              className={`px-2.5 py-1.5 border-l border-gray-200 transition-colors ${isGitHubMode ? 'text-indigo-600 bg-indigo-50' : 'text-gray-400 hover:text-gray-600'}`}
+              title={isGitHubMode ? t('switchToLocal') : t('switchToGithub')}
             >
-              <FolderOpen size={14} />
+              <GitFork size={13} />
             </button>
+            {/* History button */}
+            {!isGitHubMode && projectHistory.length > 0 && (
+              <button
+                onClick={() => setShowHistory(s => !s)}
+                className={`px-2.5 py-1.5 border-l border-gray-200 transition-colors ${showHistory ? 'text-indigo-600' : 'text-gray-400 hover:text-gray-600'}`}
+                title={t('recentProjects')}
+              >
+                <History size={13} />
+              </button>
+            )}
+            {/* Browse button */}
+            {!isGitHubMode && (
+              <button
+                onClick={async () => {
+                  const path = await api.browse();
+                  if (path) setProjectPath(path);
+                }}
+                disabled={isScanning}
+                className="px-2.5 py-1.5 text-gray-400 hover:text-gray-600 disabled:opacity-40 border-l border-gray-200 transition-colors"
+                title={t('chooseFolderTitle')}
+              >
+                <FolderOpen size={14} />
+              </button>
+            )}
           </div>
-          <button
-            onClick={handleScan}
-            disabled={isScanning || !projectPath.trim()}
-            className="flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-medium"
-          >
-            {isScanning ? <Loader2 size={13} className="animate-spin" /> : <ChevronRight size={13} />}
-            {isScanning ? t('scanning') : (locale === 'zh' ? '掃描' : 'Scan')}
-          </button>
+
+          {isGitHubMode ? (
+            <button
+              onClick={handleClone}
+              disabled={isCloning || !projectPath.trim()}
+              className="flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-medium"
+            >
+              {isCloning ? <Loader2 size={13} className="animate-spin" /> : <GitFork size={13} />}
+              {isCloning ? t('cloning') : t('cloneBtn')}
+            </button>
+          ) : (
+            <button
+              onClick={handleScan}
+              disabled={isScanning || !projectPath.trim()}
+              className="flex items-center gap-1.5 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed text-gray-700 text-xs px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap font-medium"
+            >
+              {isScanning ? <Loader2 size={13} className="animate-spin" /> : <ChevronRight size={13} />}
+              {isScanning ? t('scanning') : (locale === 'zh' ? '掃描' : 'Scan')}
+            </button>
+          )}
+
           <button
             onClick={handleAnalyze}
             disabled={isAnalyzing || files.length === 0}
@@ -251,12 +403,37 @@ export default function App() {
         {/* Right actions */}
         <div className="ml-auto flex items-center gap-2">
           {files.length > 0 && (
-            <span className="text-xs text-gray-400 hidden sm:block">
+            <span className="text-xs text-gray-400 hidden sm:flex items-center gap-1">
               {t('filesCount', { count: files.length })}
-              {hasAnalysis && <span className="text-emerald-600"> · {t('analyzedCount', { count: files.filter(f => f.description).length })}</span>}
-              {cachedCount > 0 && !isAnalyzing && <span className="text-sky-500"> · {t('cachedCountLabel', { count: cachedCount })}</span>}
+              {hasAnalysis && (
+                <span className="text-emerald-600"> · {t('analyzedCount', { count: files.filter(f => f.description).length })}</span>
+              )}
+              {cachedCount > 0 && !isAnalyzing && (
+                <span className="text-sky-500 flex items-center gap-0.5">
+                  {' '}· {t('cachedCountLabel', { count: cachedCount })}
+                  <button
+                    onClick={handleClearCache}
+                    title={t('clearCacheBtn')}
+                    className="ml-0.5 text-gray-300 hover:text-red-400 transition-colors"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                </span>
+              )}
             </span>
           )}
+
+          {hasAnalysis && (
+            <button
+              onClick={handleExportZip}
+              className="flex items-center gap-1 text-xs px-2 py-1.5 rounded-lg transition-colors bg-white border border-gray-300 text-gray-500 hover:bg-gray-50 font-medium"
+              title={t('exportZipTitle')}
+            >
+              <DownloadCloud size={12} />
+              {t('exportZipBtn')}
+            </button>
+          )}
+
           <button
             onClick={() => setShowQuiz(q => !q)}
             disabled={!hasAnalysis}
@@ -294,7 +471,34 @@ export default function App() {
           <div className="px-3 py-2 border-b border-gray-100 flex-shrink-0">
             <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('fileStructure')}</span>
           </div>
-          <FileTree files={files} selectedPath={selectedPath} onFileClick={handleFileClick} />
+
+          {/* Search bar */}
+          {files.length > 0 && (
+            <div className="px-3 py-2 border-b border-gray-100 flex-shrink-0">
+              <div className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 focus-within:border-indigo-300 focus-within:bg-white transition-all">
+                <SearchIcon size={11} className="text-gray-400 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder={t('searchPlaceholder')}
+                  className="flex-1 text-xs bg-transparent focus:outline-none text-gray-700 placeholder-gray-400 min-w-0"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+                    <X size={11} />
+                  </button>
+                )}
+              </div>
+              {searchQuery && (
+                <p className="text-xs text-gray-400 mt-1 px-1">
+                  {t('searchResultCount', { count: displayFiles.length })}
+                </p>
+              )}
+            </div>
+          )}
+
+          <FileTree files={displayFiles} selectedPath={selectedPath} onFileClick={handleFileClick} />
         </aside>
 
         <ResizeDivider onMouseDown={makeResizeHandler(leftWidth, setLeftWidth, 160, 400, 1)} />

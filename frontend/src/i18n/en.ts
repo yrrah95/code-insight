@@ -3,20 +3,35 @@ import type { zh } from './zh';
 export const en: { [K in keyof typeof zh]: string } = {
   // App — toolbar
   pathPlaceholder: 'Enter project folder path, e.g. C:\\my-project',
+  githubUrlPlaceholder: 'GitHub repo URL, e.g. https://github.com/user/repo',
   chooseFolderTitle: 'Choose Folder',
   scanBtn: '📂 Scan',
   scanning: 'Scanning...',
+  cloneBtn: 'Clone',
+  cloning: 'Cloning...',
   analyzeBtn: '✨ Analyze',
   analyzingProgress: 'Analyzing {current}/{total}',
   filesCount: '{count} files',
   analyzedCount: '{count} analyzed',
   cachedCountLabel: '{count} cached',
+  clearCacheBtn: 'Clear Cache',
+  cacheClearedMsg: 'Cache cleared',
   quizBtn: '🎯 Quiz',
   quizModeTitle: 'Quiz Mode',
   settingsTitle: 'LLM Settings',
   fileStructure: 'File Structure',
   allUpToDate: 'All files up to date, no re-analysis needed',
   chatError: 'Error: {message}',
+  recentProjects: 'Recent Projects',
+  switchToGithub: 'GitHub URL mode',
+  switchToLocal: 'Switch to local path',
+  exportZipBtn: 'ZIP',
+  exportZipTitle: 'Export Full Analysis (ZIP)',
+  notificationBody: 'Analysis complete! Reports generated',
+
+  // Search
+  searchPlaceholder: 'Search files...',
+  searchResultCount: '{count} results',
 
   // FileTree
   fileTreeEmpty: 'Enter a project path and scan to see files here',

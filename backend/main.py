@@ -1,7 +1,13 @@
 import asyncio
+import datetime
 import hashlib
+import io
 import json
 import os
+import shutil
+import subprocess
+import tempfile
+import zipfile
 from pathlib import Path
 
 try:
@@ -37,9 +43,12 @@ app.add_middleware(
 )
 
 SETTINGS_FILE = Path(__file__).parent / "settings.json"
+HISTORY_FILE = Path(__file__).parent / "history.json"
+
 chat_engine = ChatEngine()
 _scanned_files: list[dict] = []
 _project_path: str = ""
+_cloned_temp_dir: str | None = None  # tracks temp dir from GitHub clone
 
 # --- 設定管理 ---
 
@@ -76,9 +85,37 @@ def _get_provider():
         )
     raise HTTPException(status_code=400, detail=f"未知的 provider: {provider}")
 
+# --- 歷史紀錄 ---
+
+def _load_history() -> list[str]:
+    if HISTORY_FILE.exists():
+        try:
+            return json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            return []
+    return []
+
+
+def _save_history(paths: list[str]):
+    HISTORY_FILE.write_text(json.dumps(paths, ensure_ascii=False), encoding="utf-8")
+
+
+def _add_to_history(path: str):
+    history = _load_history()
+    if path in history:
+        history.remove(path)
+    history.insert(0, path)
+    _save_history(history[:10])
+
 # --- Request models ---
 
 class ScanRequest(BaseModel):
+    path: str
+
+class CloneRequest(BaseModel):
+    url: str
+
+class HistoryAddRequest(BaseModel):
     path: str
 
 class ChatRequest(BaseModel):
@@ -125,14 +162,19 @@ async def browse():
 
 @app.post("/api/scan")
 def scan(req: ScanRequest):
-    global _scanned_files, _project_path
+    global _scanned_files, _project_path, _cloned_temp_dir
     if not os.path.isdir(req.path):
         raise HTTPException(status_code=400, detail="路徑不存在或不是目錄")
+
+    # 清除上一次 clone 的暫存目錄
+    if _cloned_temp_dir and os.path.exists(_cloned_temp_dir):
+        shutil.rmtree(_cloned_temp_dir, ignore_errors=True)
+        _cloned_temp_dir = None
+
     _project_path = req.path
     _scanned_files = scan_directory(req.path)
     chat_engine.context = ""
 
-    # 載入快取，填入未過期的 description
     cached = load_cache(req.path)
     cached_count = 0
     for f in _scanned_files:
@@ -144,7 +186,54 @@ def scan(req: ScanRequest):
         else:
             f["from_cache"] = False
 
+    _add_to_history(req.path)
     return {"files": _scanned_files, "total": len(_scanned_files), "cached_count": cached_count}
+
+
+@app.post("/api/clone")
+async def clone_repo(req: CloneRequest):
+    global _scanned_files, _project_path, _cloned_temp_dir
+
+    # 清除上一次 clone 的暫存目錄
+    if _cloned_temp_dir and os.path.exists(_cloned_temp_dir):
+        shutil.rmtree(_cloned_temp_dir, ignore_errors=True)
+        _cloned_temp_dir = None
+
+    temp_dir = tempfile.mkdtemp(prefix="codeinsight_")
+    try:
+        result = subprocess.run(
+            ["git", "clone", "--depth=1", req.url, temp_dir],
+            capture_output=True, text=True, timeout=120,
+        )
+        if result.returncode != 0:
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            raise HTTPException(status_code=400, detail=f"Clone 失敗：{result.stderr.strip()}")
+
+        _cloned_temp_dir = temp_dir
+        _project_path = temp_dir
+        _scanned_files = scan_directory(temp_dir)
+        chat_engine.context = ""
+
+        cached = load_cache(temp_dir)
+        cached_count = 0
+        for f in _scanned_files:
+            entry = cached.get(f["path"])
+            if entry and not is_stale(entry, f["mtime"], f["size"]):
+                f["description"] = entry["description"]
+                f["from_cache"] = True
+                cached_count += 1
+            else:
+                f["from_cache"] = False
+
+        return {"files": _scanned_files, "total": len(_scanned_files), "cached_count": cached_count}
+    except subprocess.TimeoutExpired:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        raise HTTPException(status_code=408, detail="Clone 超時（超過 120 秒）")
+    except HTTPException:
+        raise
+    except Exception as e:
+        shutil.rmtree(temp_dir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/analyze")
@@ -153,7 +242,6 @@ async def analyze():
         raise HTTPException(status_code=400, detail="請先執行掃描")
     provider = _get_provider()
 
-    # 只分析沒有 description 的檔案
     to_analyze = [f for f in _scanned_files if not f.get("description")]
 
     if not to_analyze:
@@ -287,3 +375,89 @@ async def quiz_grade(req: QuizGradeRequest):
     provider = _get_provider()
     result = await grade_answer(req.question, req.answer, context, provider)
     return result
+
+
+# --- 快取清除 ---
+
+@app.delete("/api/cache")
+def clear_cache_endpoint():
+    global _scanned_files
+    if not _project_path:
+        raise HTTPException(status_code=400, detail="尚未掃描任何專案")
+    cache_file = Path(_project_path) / ".codeinsight.json"
+    if cache_file.exists():
+        cache_file.unlink()
+    for f in _scanned_files:
+        f["description"] = None
+        f.pop("from_cache", None)
+    return {"status": "cleared"}
+
+
+# --- 歷史紀錄 ---
+
+@app.get("/api/history")
+def get_history():
+    return {"paths": _load_history()}
+
+
+@app.post("/api/history")
+def add_history_endpoint(req: HistoryAddRequest):
+    _add_to_history(req.path)
+    return {"status": "ok"}
+
+
+@app.delete("/api/history")
+def clear_history_endpoint():
+    _save_history([])
+    return {"status": "cleared"}
+
+
+# --- ZIP 匯出 ---
+
+@app.get("/api/export/zip")
+def export_zip():
+    if not _scanned_files:
+        raise HTTPException(status_code=400, detail="請先執行分析")
+
+    cached = load_reports(_project_path)
+    reports_data = cached.get("data", ["", ""])
+    report_names = ["技術報告", "業務說明"]
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        # 兩份報告
+        for content, name in zip(reports_data, report_names):
+            if content:
+                zf.writestr(f"{name}.md", content)
+
+        # 每個檔案的說明
+        for f in _scanned_files:
+            if f.get("description"):
+                safe_name = f["path"].replace("/", "_").replace("\\", "_")
+                zf.writestr(f"files/{safe_name}.md", f"# {f['path']}\n\n{f['description']}")
+
+        # 索引
+        analyzed_count = len([f for f in _scanned_files if f.get("description")])
+        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        project_name = Path(_project_path).name
+        index = (
+            f"# {project_name} — CodeInsight 分析報告\n\n"
+            f"分析時間：{now}  \n"
+            f"分析檔案數：{analyzed_count}  \n\n"
+            "## 包含內容\n\n"
+        )
+        if reports_data[0]:
+            index += "- 技術報告.md\n"
+        if reports_data[1]:
+            index += "- 業務說明.md\n"
+        index += f"- files/ — {analyzed_count} 個檔案的詳細說明\n"
+        zf.writestr("README.md", index)
+
+    buf.seek(0)
+    project_name = Path(_project_path).name
+    filename = f"{project_name}-codeinsight.zip"
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

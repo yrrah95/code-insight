@@ -1,3 +1,4 @@
+import fnmatch
 import os
 from pathlib import Path
 
@@ -43,24 +44,65 @@ def _classify(filepath: str, root: str) -> str:
     return "Other"
 
 
+def _load_gitignore_patterns(directory: str) -> list[str]:
+    path = os.path.join(directory, ".gitignore")
+    if not os.path.isfile(path):
+        return []
+    patterns = []
+    with open(path, encoding="utf-8", errors="ignore") as f:
+        for line in f:
+            line = line.strip()
+            # Skip comments, negations, and empty lines
+            if not line or line.startswith("#") or line.startswith("!"):
+                continue
+            patterns.append(line.rstrip("/"))
+    return patterns
+
+
+def _is_gitignored(name: str, rel_posix: str, patterns: list[str]) -> bool:
+    if not patterns:
+        return False
+    for pattern in patterns:
+        if fnmatch.fnmatch(name, pattern):
+            return True
+        if fnmatch.fnmatch(rel_posix, pattern):
+            return True
+        # Support patterns without path separator matching any depth
+        if "/" not in pattern and fnmatch.fnmatch(rel_posix, f"**/{pattern}"):
+            return True
+    return False
+
+
 def scan_directory(directory: str) -> list[dict]:
     results = []
+    gitignore = _load_gitignore_patterns(directory)
+
     for dirpath, dirnames, filenames in os.walk(directory):
+        rel_dir = os.path.relpath(dirpath, directory)
         dirnames[:] = [
             d for d in dirnames
-            if d not in SKIP_DIRS and not d.startswith(".")
+            if d not in SKIP_DIRS
+            and not d.startswith(".")
+            and not _is_gitignored(
+                d,
+                os.path.join(rel_dir, d).replace("\\", "/"),
+                gitignore,
+            )
         ]
         for filename in filenames:
             ext = Path(filename).suffix.lower()
             if ext not in CODE_EXTENSIONS:
                 continue
             filepath = os.path.join(dirpath, filename)
+            rel_path = os.path.relpath(filepath, directory).replace("\\", "/")
+            if _is_gitignored(filename, rel_path, gitignore):
+                continue
             try:
                 size = os.path.getsize(filepath)
                 if size > 500_000:
                     continue
                 results.append({
-                    "path": os.path.relpath(filepath, directory).replace("\\", "/"),
+                    "path": rel_path,
                     "absolute_path": filepath,
                     "category": _classify(filepath, directory),
                     "extension": ext,

@@ -1,20 +1,35 @@
 export const zh = {
   // App — toolbar
   pathPlaceholder: '輸入專案資料夾路徑，例如 C:\\my-project',
+  githubUrlPlaceholder: 'GitHub repo URL，例如 https://github.com/user/repo',
   chooseFolderTitle: '選擇資料夾',
   scanBtn: '📂 掃描',
   scanning: '掃描中...',
+  cloneBtn: 'Clone',
+  cloning: 'Clone 中...',
   analyzeBtn: '✨ 分析',
   analyzingProgress: '分析中 {current}/{total}',
   filesCount: '{count} 個檔案',
   analyzedCount: '{count} 已分析',
   cachedCountLabel: '{count} 來自快取',
+  clearCacheBtn: '清除快取',
+  cacheClearedMsg: '快取已清除',
   quizBtn: '🎯 測驗',
   quizModeTitle: '測驗模式',
   settingsTitle: 'LLM 設定',
   fileStructure: '檔案結構',
   allUpToDate: '所有檔案均為最新，無需重新分析',
   chatError: '錯誤：{message}',
+  recentProjects: '最近的專案',
+  switchToGithub: 'GitHub URL 模式',
+  switchToLocal: '切換為本機路徑',
+  exportZipBtn: 'ZIP',
+  exportZipTitle: '匯出完整分析（ZIP）',
+  notificationBody: '分析完成！報告已產生',
+
+  // Search
+  searchPlaceholder: '搜尋檔案...',
+  searchResultCount: '{count} 個結果',
 
   // FileTree
   fileTreeEmpty: '輸入專案路徑並掃描，檔案列表會出現在這裡',

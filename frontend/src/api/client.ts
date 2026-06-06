@@ -47,6 +47,16 @@ export const api = {
     return res.json();
   },
 
+  async cloneRepo(url: string) {
+    const res = await fetch(`${BASE}/api/clone`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    });
+    await throwIfError(res);
+    return res.json();
+  },
+
   async analyzeStream(
     onProgress: (index: number, total: number, path: string, category: string, description: string) => void,
     onDone: (skipped?: boolean) => void,
@@ -111,6 +121,30 @@ export const api = {
 
   async clearChat() {
     await fetch(`${BASE}/api/chat/clear`, { method: 'POST' });
+  },
+
+  async clearCache() {
+    const res = await fetch(`${BASE}/api/cache`, { method: 'DELETE' });
+    await throwIfError(res);
+  },
+
+  async getHistory(): Promise<{ paths: string[] }> {
+    const res = await fetch(`${BASE}/api/history`);
+    return res.json();
+  },
+
+  async addHistory(path: string): Promise<void> {
+    await fetch(`${BASE}/api/history`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+  },
+
+  async exportZip(): Promise<Blob> {
+    const res = await fetch(`${BASE}/api/export/zip`);
+    await throwIfError(res);
+    return res.blob();
   },
 
   async getSettings() {
