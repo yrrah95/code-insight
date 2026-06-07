@@ -75,15 +75,6 @@ export const api = {
     });
   },
 
-  async reportStream(onChunk: (reportIndex: number, text: string) => void, onDone: () => void) {
-    const res = await fetch(`${BASE}/api/report/generate`, { method: 'POST' });
-    await throwIfError(res);
-    await readSSE(res, (data) => {
-      if (data.done) { onDone(); return; }
-      if (data.chunk !== undefined) onChunk(data.report as number, data.chunk as string);
-    });
-  },
-
   async chatStream(
     message: string,
     onChunk: (chunk: string) => void,

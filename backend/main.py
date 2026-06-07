@@ -1,6 +1,5 @@
 import asyncio
 import datetime
-import hashlib
 import io
 import json
 import os
@@ -23,14 +22,13 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from analyzer import analyze_files, build_markdown_report, get_context_summary
-from cache import is_stale, load_cache, load_reports, save_cache, save_reports
+from cache import is_stale, load_cache, save_cache
 from chat import ChatEngine
 from llm.claude import ClaudeProvider
 from llm.deepseek import DeepSeekProvider
 from llm.ollama import OllamaProvider
 from llm.openai_provider import OpenAIProvider
 from interview import InterviewEngine
-from report_generator import generate_reports
 from scanner import scan_directory
 
 app = FastAPI(title="CodeInsight API")
@@ -260,45 +258,6 @@ async def analyze():
     return StreamingResponse(stream(), media_type="text/event-stream")
 
 
-def _reports_context_hash(files: list[dict]) -> str:
-    blob = "".join(f.get("description", "") for f in sorted(files, key=lambda x: x["path"]))
-    return hashlib.sha256(blob.encode()).hexdigest()[:16]
-
-
-@app.post("/api/report/generate")
-async def report_generate():
-    if not _scanned_files:
-        raise HTTPException(status_code=400, detail="請先執行掃描")
-    analyzed = [f for f in _scanned_files if f.get("description")]
-    if not analyzed:
-        raise HTTPException(status_code=400, detail="請先完成分析")
-
-    context_hash = _reports_context_hash(analyzed)
-    cached = load_reports(_project_path)
-
-    if cached.get("context_hash") == context_hash and cached.get("data"):
-        async def stream_cached():
-            for idx, content in enumerate(cached["data"]):
-                chunk_size = 800
-                for i in range(0, len(content), chunk_size):
-                    yield f"data: {json.dumps({'report': idx, 'chunk': content[i:i+chunk_size]}, ensure_ascii=False)}\n\n"
-                    await asyncio.sleep(0)
-            yield 'data: {"done": true}\n\n'
-        return StreamingResponse(stream_cached(), media_type="text/event-stream")
-
-    provider = _get_provider()
-    project_name = Path(_project_path).name
-    collected: list[str] = ["", ""]
-
-    async def stream():
-        async for idx, chunk in generate_reports(analyzed, project_name, provider):
-            collected[idx] += chunk
-            yield f"data: {json.dumps({'report': idx, 'chunk': chunk}, ensure_ascii=False)}\n\n"
-        save_reports(_project_path, context_hash, collected)
-        yield 'data: {"done": true}\n\n'
-
-    return StreamingResponse(stream(), media_type="text/event-stream")
-
 
 @app.post("/api/chat")
 async def chat(req: ChatRequest):
@@ -450,39 +409,24 @@ def clear_history_endpoint():
 def export_zip():
     if not _scanned_files:
         raise HTTPException(status_code=400, detail="請先執行分析")
-
-    cached = load_reports(_project_path)
-    reports_data = cached.get("data", ["", ""])
-    report_names = ["技術報告", "業務說明"]
+    analyzed = [f for f in _scanned_files if f.get("description")]
+    if not analyzed:
+        raise HTTPException(status_code=400, detail="請先完成分析")
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        # 兩份報告
-        for content, name in zip(reports_data, report_names):
-            if content:
-                zf.writestr(f"{name}.md", content)
+        for f in analyzed:
+            safe_name = f["path"].replace("/", "_").replace("\\", "_")
+            zf.writestr(f"files/{safe_name}.md", f"# {f['path']}\n\n{f['description']}")
 
-        # 每個檔案的說明
-        for f in _scanned_files:
-            if f.get("description"):
-                safe_name = f["path"].replace("/", "_").replace("\\", "_")
-                zf.writestr(f"files/{safe_name}.md", f"# {f['path']}\n\n{f['description']}")
-
-        # 索引
-        analyzed_count = len([f for f in _scanned_files if f.get("description")])
         now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
         project_name = Path(_project_path).name
         index = (
-            f"# {project_name} — CodeInsight 分析報告\n\n"
+            f"# {project_name} — CodeInsight 檔案說明\n\n"
             f"分析時間：{now}  \n"
-            f"分析檔案數：{analyzed_count}  \n\n"
-            "## 包含內容\n\n"
+            f"分析檔案數：{len(analyzed)}  \n\n"
+            f"## 包含內容\n\nfiles/ — {len(analyzed)} 個檔案的詳細說明\n"
         )
-        if reports_data[0]:
-            index += "- 技術報告.md\n"
-        if reports_data[1]:
-            index += "- 業務說明.md\n"
-        index += f"- files/ — {analyzed_count} 個檔案的詳細說明\n"
         zf.writestr("README.md", index)
 
     buf.seek(0)

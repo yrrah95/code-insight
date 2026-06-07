@@ -14,7 +14,6 @@ export const zh = {
   cachedCountLabel: '{count} 來自快取',
   clearCacheBtn: '清除快取',
   cacheClearedMsg: '快取已清除',
-  interviewBtn: '面試',
   interviewModeTitle: '技術面試',
   settingsTitle: 'LLM 設定',
   fileStructure: '檔案結構',
@@ -37,25 +36,6 @@ export const zh = {
   // FileTree
   fileTreeEmpty: '輸入專案路徑並掃描，檔案列表會出現在這裡',
 
-  // ReportView — tabs & status
-  reportTab0: '技術報告',
-  reportTab1: '業務說明',
-  reportEmpty0: '掃描並分析專案後，',
-  reportEmpty1: '將自動產生兩份技術報告',
-  analyzingFiles: '逐檔分析中... {current} / {total} 檔案',
-  writingReport: '正在撰寫第 {n} / 2 份報告（{name}）...',
-  waitingReport: '等待第 {n} 份報告產生...',
-  writing: '撰寫中...',
-  notGenerated: '尚未產生',
-  notAnalyzed: '尚未分析',
-  exportBtn: '↓ 匯出',
-  exportTitle: '匯出為 Markdown',
-
-  // AnalogyBlock
-  analogyBtn: '💡 比喻解釋',
-  reExplainBtn: '🔄 重新解釋',
-  explaining: '解釋中...',
-  connectionFailed: '連線失敗，請確認後端已啟動',
 
   // ChatPanel
   chatHeader: 'AI 問答',
@@ -72,6 +52,7 @@ export const zh = {
   interviewReadyDesc: 'AI 將扮演技術面試官，根據這個專案一題一題問你，用引導的方式幫你真正理解程式碼。',
   startInterview: '開始面試',
   interviewInProgress: '等待面試官...',
+  interviewWaitAnalysis: '請先完成分析，再開始面試',
   answerPlaceholder: '輸入你的回答... (Enter 送出)',
   generateReport: '生成學習報告',
   reportGenerating: '正在生成學習報告...',

@@ -16,7 +16,6 @@ export const en: { [K in keyof typeof zh]: string } = {
   cachedCountLabel: '{count} cached',
   clearCacheBtn: 'Clear Cache',
   cacheClearedMsg: 'Cache cleared',
-  interviewBtn: 'Interview',
   interviewModeTitle: 'Technical Interview',
   settingsTitle: 'LLM Settings',
   fileStructure: 'File Structure',
@@ -39,25 +38,6 @@ export const en: { [K in keyof typeof zh]: string } = {
   // FileTree
   fileTreeEmpty: 'Enter a project path and scan to see files here',
 
-  // ReportView — tabs & status
-  reportTab0: 'Technical Report',
-  reportTab1: 'Business Summary',
-  reportEmpty0: 'Scan and analyze a project to',
-  reportEmpty1: 'auto-generate two reports',
-  analyzingFiles: 'Analyzing files... {current} / {total}',
-  writingReport: 'Writing report {n} / 2 ({name})...',
-  waitingReport: 'Waiting for report {n}...',
-  writing: 'Writing...',
-  notGenerated: 'Not generated',
-  notAnalyzed: 'Not analyzed',
-  exportBtn: '↓ Export',
-  exportTitle: 'Export as Markdown',
-
-  // AnalogyBlock
-  analogyBtn: '💡 Explain Simply',
-  reExplainBtn: '🔄 Re-explain',
-  explaining: 'Explaining...',
-  connectionFailed: 'Connection failed, please ensure backend is running',
 
   // ChatPanel
   chatHeader: 'AI Q&A',
@@ -74,6 +54,7 @@ export const en: { [K in keyof typeof zh]: string } = {
   interviewReadyDesc: 'AI will act as a technical interviewer, asking questions about this project one by one, guiding you to truly understand the code.',
   startInterview: 'Start Interview',
   interviewInProgress: 'Waiting for interviewer...',
+  interviewWaitAnalysis: 'Please complete analysis before starting',
   answerPlaceholder: 'Type your answer... (Enter to send)',
   generateReport: 'Generate Learning Report',
   reportGenerating: 'Generating learning report...',

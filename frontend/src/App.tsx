@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  Search, FolderOpen, Sparkles, Mic, Settings,
+  Search, FolderOpen, Sparkles, Settings,
   ChevronRight, Loader2, GitFork, History, SearchIcon,
   DownloadCloud, Trash2, X, FileText,
 } from 'lucide-react';
 import { api } from './api/client';
 import FileTree from './components/FileTree';
-import ReportView from './components/ReportView';
 import ChatPanel from './components/ChatPanel';
 import InterviewPanel from './components/InterviewPanel';
 import SettingsModal from './components/SettingsModal';
@@ -33,15 +32,10 @@ export default function App() {
   const [isGitHubMode, setIsGitHubMode] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState({ current: 0, total: 0 });
-  const [reports, setReports] = useState<[string, string]>(['', '']);
-  const [generatingReportIndex, setGeneratingReportIndex] = useState<number | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
-  const [openFilePaths, setOpenFilePaths] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<string>('report-0');
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showInterview, setShowInterview] = useState(false);
   const [cachedCount, setCachedCount] = useState(0);
   const [error, setError] = useState('');
   const [leftWidth, setLeftWidth] = useState(232);
@@ -94,17 +88,6 @@ export default function App() {
 
   const handleFileClick = (path: string) => {
     setSelectedPath(path);
-    setOpenFilePaths(prev => prev.includes(path) ? prev : [...prev, path]);
-    setActiveTab(path);
-  };
-
-  const handleFileTabClose = (path: string) => {
-    setOpenFilePaths(prev => {
-      const next = prev.filter(p => p !== path);
-      if (activeTab === path)
-        setActiveTab(next.length > 0 ? next[next.length - 1] : 'report-0');
-      return next;
-    });
   };
 
   const handleScan = async () => {
@@ -112,9 +95,6 @@ export default function App() {
     setError('');
     setIsScanning(true);
     setFiles([]);
-    setReports(['', '']);
-    setOpenFilePaths([]);
-    setActiveTab('report-0');
     setChatMessages([]);
     setSearchQuery('');
     try {
@@ -138,9 +118,6 @@ export default function App() {
     setError('');
     setIsCloning(true);
     setFiles([]);
-    setReports(['', '']);
-    setOpenFilePaths([]);
-    setActiveTab('report-0');
     setChatMessages([]);
     setSearchQuery('');
     try {
@@ -169,31 +146,11 @@ export default function App() {
             prev.map(f => f.path === path ? { ...f, description, from_cache: false } : f)
           );
         },
-        async (skipped) => {
+        (skipped) => {
           setIsAnalyzing(false);
           if (skipped) { setError(t('allUpToDate')); return; }
-          setReports(['', '']);
-          setGeneratingReportIndex(0);
-          try {
-            await api.reportStream(
-              (idx, chunk) => {
-                setGeneratingReportIndex(idx);
-                setReports(prev => {
-                  const r: [string, string] = [...prev] as [string, string];
-                  r[idx] += chunk;
-                  return r;
-                });
-              },
-              () => {
-                setGeneratingReportIndex(null);
-                if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-                  new Notification('CodeInsight', { body: t('notificationBody') });
-                }
-              },
-            );
-          } catch (e) {
-            setError((e as Error).message);
-            setGeneratingReportIndex(null);
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            new Notification('CodeInsight', { body: t('notificationBody') });
           }
         },
       );
@@ -469,19 +426,6 @@ export default function App() {
           )}
 
           <button
-            onClick={() => setShowInterview(q => !q)}
-            disabled={!hasAnalysis}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium ${
-              showInterview
-                ? 'bg-indigo-600 text-white'
-                : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
-            }`}
-            title={t('interviewModeTitle')}
-          >
-            <Mic size={13} />
-            {t('interviewBtn')}
-          </button>
-          <button
             onClick={toggle}
             className="text-xs text-gray-500 hover:text-gray-700 transition-colors px-2 py-1 rounded-md border border-gray-200 hover:border-gray-300 bg-white"
             title={locale === 'zh' ? 'Switch to English' : '切換為繁體中文'}
@@ -537,37 +481,22 @@ export default function App() {
 
         <ResizeDivider onMouseDown={makeResizeHandler(leftWidth, setLeftWidth, 160, 400, 1)} />
 
-        {/* Center: Report */}
-        <main className="flex-1 overflow-hidden bg-slate-50">
-          <ReportView
-            reports={reports}
-            isAnalyzing={isAnalyzing}
-            generatingReportIndex={generatingReportIndex}
-            analyzeProgress={analyzeProgress}
-            files={files}
-            onFileClick={handleFileClick}
-            openFilePaths={openFilePaths}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            onFileTabClose={handleFileTabClose}
-          />
+        {/* Center: Interview */}
+        <main className="flex-1 overflow-hidden bg-white">
+          <InterviewPanel hasAnalysis={hasAnalysis} isAnalyzing={isAnalyzing} />
         </main>
 
         <ResizeDivider onMouseDown={makeResizeHandler(rightWidth, setRightWidth, 240, 500, -1)} />
 
-        {/* Right: Chat / Quiz */}
+        {/* Right: Chat */}
         <aside style={{ width: rightWidth }} className="flex-shrink-0 bg-white overflow-hidden flex flex-col">
-          {showInterview ? (
-            <InterviewPanel />
-          ) : (
-            <ChatPanel
-              messages={chatMessages}
-              isChatting={isChatting}
-              disabled={!hasAnalysis}
-              onSend={handleChat}
-              onClear={handleClearChat}
-            />
-          )}
+          <ChatPanel
+            messages={chatMessages}
+            isChatting={isChatting}
+            disabled={!hasAnalysis}
+            onSend={handleChat}
+            onClear={handleClearChat}
+          />
         </aside>
       </div>
 

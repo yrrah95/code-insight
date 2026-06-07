@@ -12,7 +12,12 @@ interface Message {
   streaming?: boolean;
 }
 
-export default function InterviewPanel() {
+interface Props {
+  hasAnalysis: boolean;
+  isAnalyzing: boolean;
+}
+
+export default function InterviewPanel({ hasAnalysis, isAnalyzing }: Props) {
   const t = useT();
   const [stage, setStage] = useState<Stage>('idle');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -134,10 +139,13 @@ export default function InterviewPanel() {
           <Mic size={20} className="text-indigo-600" />
         </div>
         <h3 className="text-sm font-semibold text-gray-800 mb-2">{t('interviewReadyTitle')}</h3>
-        <p className="text-xs text-gray-500 mb-6 max-w-[200px] leading-relaxed">{t('interviewReadyDesc')}</p>
+        <p className="text-xs text-gray-500 mb-6 max-w-[200px] leading-relaxed">
+          {isAnalyzing ? t('interviewWaitAnalysis') : t('interviewReadyDesc')}
+        </p>
         <button
           onClick={handleStart}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-4 py-2 rounded-lg font-medium transition-colors"
+          disabled={!hasAnalysis || isAnalyzing}
+          className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs px-4 py-2 rounded-lg font-medium transition-colors"
         >
           {t('startInterview')}
         </button>
