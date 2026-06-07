@@ -174,19 +174,51 @@ export const api = {
     return data.path ?? '';
   },
 
-  async generateQuiz() {
-    const res = await fetch(`${BASE}/api/quiz/generate`, { method: 'POST' });
+  async interviewStart(
+    onChunk: (chunk: string) => void,
+    onDone: () => void,
+  ): Promise<void> {
+    const res = await fetch(`${BASE}/api/interview/start`, { method: 'POST' });
     await throwIfError(res);
-    return res.json();
+    await readSSE(res, (data) => {
+      if (data.done) { onDone(); return; }
+      if (data.chunk) onChunk(data.chunk as string);
+    });
   },
 
-  async gradeAnswer(question: string, answer: string) {
-    const res = await fetch(`${BASE}/api/quiz/grade`, {
+  async interviewRespond(
+    message: string,
+    onChunk: (chunk: string) => void,
+    onDone: (meta: { canFinish: boolean; autoFinish: boolean }) => void,
+  ): Promise<void> {
+    const res = await fetch(`${BASE}/api/interview/respond`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question, answer }),
+      body: JSON.stringify({ message }),
     });
     await throwIfError(res);
-    return res.json();
+    await readSSE(res, (data) => {
+      if (data.done) {
+        onDone({ canFinish: data.can_finish as boolean, autoFinish: data.auto_finish as boolean });
+        return;
+      }
+      if (data.chunk) onChunk(data.chunk as string);
+    });
+  },
+
+  async interviewReport(
+    onChunk: (chunk: string) => void,
+    onDone: () => void,
+  ): Promise<void> {
+    const res = await fetch(`${BASE}/api/interview/report`, { method: 'POST' });
+    await throwIfError(res);
+    await readSSE(res, (data) => {
+      if (data.done) { onDone(); return; }
+      if (data.chunk) onChunk(data.chunk as string);
+    });
+  },
+
+  async interviewClear(): Promise<void> {
+    await fetch(`${BASE}/api/interview/clear`, { method: 'POST' });
   },
 };

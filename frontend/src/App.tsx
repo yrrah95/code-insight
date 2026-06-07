@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import {
-  Search, FolderOpen, Sparkles, GraduationCap, Settings,
+  Search, FolderOpen, Sparkles, Mic, Settings,
   ChevronRight, Loader2, GitFork, History, SearchIcon,
   DownloadCloud, Trash2, X, FileText,
 } from 'lucide-react';
@@ -8,7 +8,7 @@ import { api } from './api/client';
 import FileTree from './components/FileTree';
 import ReportView from './components/ReportView';
 import ChatPanel from './components/ChatPanel';
-import QuizPanel from './components/QuizPanel';
+import InterviewPanel from './components/InterviewPanel';
 import SettingsModal from './components/SettingsModal';
 import type { FileItem, ChatMessage } from './types';
 import { useLocale, useT } from './i18n/LocaleContext';
@@ -41,7 +41,7 @@ export default function App() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isChatting, setIsChatting] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showQuiz, setShowQuiz] = useState(false);
+  const [showInterview, setShowInterview] = useState(false);
   const [cachedCount, setCachedCount] = useState(0);
   const [error, setError] = useState('');
   const [leftWidth, setLeftWidth] = useState(232);
@@ -469,17 +469,17 @@ export default function App() {
           )}
 
           <button
-            onClick={() => setShowQuiz(q => !q)}
+            onClick={() => setShowInterview(q => !q)}
             disabled={!hasAnalysis}
             className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium ${
-              showQuiz
+              showInterview
                 ? 'bg-indigo-600 text-white'
                 : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
             }`}
-            title={t('quizModeTitle')}
+            title={t('interviewModeTitle')}
           >
-            <GraduationCap size={13} />
-            {locale === 'zh' ? '測驗' : 'Quiz'}
+            <Mic size={13} />
+            {t('interviewBtn')}
           </button>
           <button
             onClick={toggle}
@@ -557,8 +557,8 @@ export default function App() {
 
         {/* Right: Chat / Quiz */}
         <aside style={{ width: rightWidth }} className="flex-shrink-0 bg-white overflow-hidden flex flex-col">
-          {showQuiz ? (
-            <QuizPanel />
+          {showInterview ? (
+            <InterviewPanel />
           ) : (
             <ChatPanel
               messages={chatMessages}

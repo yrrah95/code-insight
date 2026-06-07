@@ -29,7 +29,7 @@ from llm.claude import ClaudeProvider
 from llm.deepseek import DeepSeekProvider
 from llm.ollama import OllamaProvider
 from llm.openai_provider import OpenAIProvider
-from quiz import generate_questions, grade_answer
+from interview import InterviewEngine
 from report_generator import generate_reports
 from scanner import scan_directory
 
@@ -46,6 +46,7 @@ SETTINGS_FILE = Path(__file__).parent / "settings.json"
 HISTORY_FILE = Path(__file__).parent / "history.json"
 
 chat_engine = ChatEngine()
+interview_engine = InterviewEngine()
 _scanned_files: list[dict] = []
 _project_path: str = ""
 _cloned_temp_dir: str | None = None  # tracks temp dir from GitHub clone
@@ -120,10 +121,6 @@ class HistoryAddRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-
-class QuizGradeRequest(BaseModel):
-    question: str
-    answer: str
 
 class ExplainRequest(BaseModel):
     title: str
@@ -355,26 +352,61 @@ async def explain(req: ExplainRequest):
     return StreamingResponse(stream(), media_type="text/event-stream")
 
 
-@app.post("/api/quiz/generate")
-async def quiz_generate():
+@app.post("/api/interview/start")
+async def interview_start():
     if not _scanned_files:
         raise HTTPException(status_code=400, detail="請先執行分析")
     context = get_context_summary(_scanned_files)
     if not context.strip():
         raise HTTPException(status_code=400, detail="尚未有分析結果，請先完成分析")
     provider = _get_provider()
-    questions = await generate_questions(context, provider)
-    return {"questions": questions}
+    interview_engine.set_context(context)
+
+    async def stream():
+        async for chunk in interview_engine.start(provider):
+            yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+        yield 'data: {"done": true}\n\n'
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
 
 
-@app.post("/api/quiz/grade")
-async def quiz_grade(req: QuizGradeRequest):
+@app.post("/api/interview/respond")
+async def interview_respond(req: ChatRequest):
     if not _scanned_files:
         raise HTTPException(status_code=400, detail="請先執行分析")
-    context = get_context_summary(_scanned_files)
     provider = _get_provider()
-    result = await grade_answer(req.question, req.answer, context, provider)
-    return result
+
+    async def stream():
+        async for chunk in interview_engine.respond(req.message, provider):
+            yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+        done_payload = {
+            "done": True,
+            "can_finish": interview_engine.can_finish,
+            "auto_finish": interview_engine.auto_finish,
+        }
+        yield f"data: {json.dumps(done_payload)}\n\n"
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.post("/api/interview/report")
+async def interview_report():
+    if not interview_engine.history:
+        raise HTTPException(status_code=400, detail="尚未開始面試")
+    provider = _get_provider()
+
+    async def stream():
+        async for chunk in interview_engine.generate_report(provider):
+            yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+        yield 'data: {"done": true}\n\n'
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+@app.post("/api/interview/clear")
+def interview_clear():
+    interview_engine.clear()
+    return {"status": "cleared"}
 
 
 # --- 快取清除 ---
