@@ -1,5 +1,18 @@
 const BASE = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8000';
 
+export interface QuestionData {
+  q: string;
+  choices: string[];
+  correct: number;
+  score: QuizScore;
+  progress: number;
+}
+
+export interface QuizScore {
+  correct: number;
+  total: number;
+}
+
 async function throwIfError(res: Response) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({ detail: res.statusText }));
@@ -165,32 +178,38 @@ export const api = {
     return data.path ?? '';
   },
 
-  async interviewStart(
-    onChunk: (chunk: string) => void,
-    onDone: () => void,
-  ): Promise<void> {
+  async interviewStart(): Promise<QuestionData> {
     const res = await fetch(`${BASE}/api/interview/start`, { method: 'POST' });
     await throwIfError(res);
-    await readSSE(res, (data) => {
-      if (data.done) { onDone(); return; }
-      if (data.chunk) onChunk(data.chunk as string);
-    });
+    return res.json();
   },
 
-  async interviewRespond(
-    message: string,
+  async interviewNext(): Promise<QuestionData> {
+    const res = await fetch(`${BASE}/api/interview/next`, { method: 'POST' });
+    await throwIfError(res);
+    return res.json();
+  },
+
+  async interviewAnswer(
+    choice: number,
     onChunk: (chunk: string) => void,
-    onDone: (meta: { canFinish: boolean; autoFinish: boolean }) => void,
+    onDone: (meta: { isCorrect: boolean; canFinish: boolean; autoFinish: boolean; score: QuizScore; progress: number }) => void,
   ): Promise<void> {
-    const res = await fetch(`${BASE}/api/interview/respond`, {
+    const res = await fetch(`${BASE}/api/interview/answer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ choice }),
     });
     await throwIfError(res);
     await readSSE(res, (data) => {
       if (data.done) {
-        onDone({ canFinish: data.can_finish as boolean, autoFinish: data.auto_finish as boolean });
+        onDone({
+          isCorrect: data.is_correct as boolean,
+          canFinish: data.can_finish as boolean,
+          autoFinish: data.auto_finish as boolean,
+          score: data.score as QuizScore,
+          progress: data.progress as number,
+        });
         return;
       }
       if (data.chunk) onChunk(data.chunk as string);

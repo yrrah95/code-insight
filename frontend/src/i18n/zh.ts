@@ -48,17 +48,19 @@ export const zh = {
   sendBtn: '送出',
 
   // InterviewPanel
-  interviewReadyTitle: '準備好接受技術面試了嗎？',
-  interviewReadyDesc: 'AI 將扮演技術面試官，根據這個專案一題一題問你，用引導的方式幫你真正理解程式碼。',
-  startInterview: '開始面試',
-  interviewInProgress: '等待面試官...',
-  interviewWaitAnalysis: '請先完成分析，再開始面試',
-  answerPlaceholder: '輸入你的回答... (Enter 送出)',
+  interviewReadyTitle: '準備好接受技術測驗了嗎？',
+  interviewReadyDesc: 'AI 根據這個專案出選擇題，測試你對程式碼的理解。答對有特效！全部作答後生成學習報告。',
+  startInterview: '開始測驗',
+  interviewWaitAnalysis: '請先完成分析，再開始測驗',
+  progressLabel: '了解程度',
+  generatingQuestion: '出題中...',
+  questionNumber: '第 {n} 題',
+  nextQuestion: '下一題',
   generateReport: '生成學習報告',
   reportGenerating: '正在生成學習報告...',
   reportTitle: '學習報告',
   downloadReport: '↓ 下載報告',
-  retakeInterview: '重新面試',
+  retakeInterview: '重新測驗',
 
   // SettingsModal
   settingsModalTitle: 'LLM 設定',

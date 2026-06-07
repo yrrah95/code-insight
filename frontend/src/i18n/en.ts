@@ -50,17 +50,19 @@ export const en: { [K in keyof typeof zh]: string } = {
   sendBtn: 'Send',
 
   // InterviewPanel
-  interviewReadyTitle: 'Ready for your technical interview?',
-  interviewReadyDesc: 'AI will act as a technical interviewer, asking questions about this project one by one, guiding you to truly understand the code.',
-  startInterview: 'Start Interview',
-  interviewInProgress: 'Waiting for interviewer...',
+  interviewReadyTitle: 'Ready for a technical quiz?',
+  interviewReadyDesc: 'AI generates multiple-choice questions based on this project to test your code understanding. Correct answers trigger special effects!',
+  startInterview: 'Start Quiz',
   interviewWaitAnalysis: 'Please complete analysis before starting',
-  answerPlaceholder: 'Type your answer... (Enter to send)',
+  progressLabel: 'Understanding',
+  generatingQuestion: 'Generating question...',
+  questionNumber: 'Question {n}',
+  nextQuestion: 'Next',
   generateReport: 'Generate Learning Report',
   reportGenerating: 'Generating learning report...',
   reportTitle: 'Learning Report',
   downloadReport: '↓ Download Report',
-  retakeInterview: 'Restart Interview',
+  retakeInterview: 'Restart Quiz',
 
   // SettingsModal
   settingsModalTitle: 'LLM Settings',

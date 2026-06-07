@@ -120,6 +120,9 @@ class HistoryAddRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
 
+class AnswerRequest(BaseModel):
+    choice: int
+
 class ExplainRequest(BaseModel):
     title: str
     content: str
@@ -317,41 +320,53 @@ async def interview_start():
         raise HTTPException(status_code=400, detail="請先執行分析")
     context = get_context_summary(_scanned_files)
     if not context.strip():
-        raise HTTPException(status_code=400, detail="尚未有分析結果，請先完成分析")
+        raise HTTPException(status_code=400, detail="請先完成分析")
     provider = _get_provider()
     interview_engine.set_context(context)
-
-    async def stream():
-        async for chunk in interview_engine.start(provider):
-            yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
-        yield 'data: {"done": true}\n\n'
-
-    return StreamingResponse(stream(), media_type="text/event-stream")
+    question = await interview_engine.next_question(provider)
+    correct_count, total = interview_engine.score
+    return {**question, "score": {"correct": correct_count, "total": total}, "progress": interview_engine.progress_pct}
 
 
-@app.post("/api/interview/respond")
-async def interview_respond(req: ChatRequest):
-    if not _scanned_files:
-        raise HTTPException(status_code=400, detail="請先執行分析")
+@app.post("/api/interview/next")
+async def interview_next():
+    if not interview_engine.context:
+        raise HTTPException(status_code=400, detail="請先開始面試")
+    provider = _get_provider()
+    question = await interview_engine.next_question(provider)
+    correct_count, total = interview_engine.score
+    return {**question, "score": {"correct": correct_count, "total": total}, "progress": interview_engine.progress_pct}
+
+
+@app.post("/api/interview/answer")
+async def interview_answer(req: AnswerRequest):
+    if not interview_engine.questions:
+        raise HTTPException(status_code=400, detail="尚未取得題目")
+    last_q = interview_engine.questions[-1]
+    is_correct = last_q["correct"] == req.choice
     provider = _get_provider()
 
     async def stream():
-        async for chunk in interview_engine.respond(req.message, provider):
+        async for chunk in interview_engine.answer(req.choice, provider):
             yield f"data: {json.dumps({'chunk': chunk}, ensure_ascii=False)}\n\n"
+        correct_count, total = interview_engine.score
         done_payload = {
             "done": True,
+            "is_correct": is_correct,
             "can_finish": interview_engine.can_finish,
             "auto_finish": interview_engine.auto_finish,
+            "score": {"correct": correct_count, "total": total},
+            "progress": interview_engine.progress_pct,
         }
-        yield f"data: {json.dumps(done_payload)}\n\n"
+        yield f"data: {json.dumps(done_payload, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(stream(), media_type="text/event-stream")
 
 
 @app.post("/api/interview/report")
 async def interview_report():
-    if not interview_engine.history:
-        raise HTTPException(status_code=400, detail="尚未開始面試")
+    if interview_engine.answered_count == 0:
+        raise HTTPException(status_code=400, detail="尚未作答任何題目")
     provider = _get_provider()
 
     async def stream():
