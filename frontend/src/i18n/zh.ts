@@ -14,7 +14,7 @@ export const zh = {
   cachedCountLabel: '{count} 來自快取',
   clearCacheBtn: '清除快取',
   cacheClearedMsg: '快取已清除',
-  interviewModeTitle: '技術面試',
+  interviewModeTitle: 'AI 模擬面試官',
   settingsTitle: 'LLM 設定',
   fileStructure: '檔案結構',
   allUpToDate: '所有檔案均為最新，無需重新分析',
@@ -48,10 +48,10 @@ export const zh = {
   sendBtn: '送出',
 
   // InterviewPanel
-  interviewReadyTitle: '準備好接受技術測驗了嗎？',
-  interviewReadyDesc: 'AI 根據這個專案出選擇題，測試你對程式碼的理解。答對有特效！全部作答後生成學習報告。',
-  startInterview: '開始測驗',
-  interviewWaitAnalysis: '請先完成分析，再開始測驗',
+  interviewReadyTitle: '你敢說你真的看懂這個 code 了嗎？',
+  interviewReadyDesc: 'AI 化身技術面試官，根據這個專案動態出選擇題，測試你能不能開口解釋自己的 codebase。答對有特效，答完生成學習報告。',
+  startInterview: '接受面試',
+  interviewWaitAnalysis: '請先完成分析，再開始面試',
   progressLabel: '了解程度',
   generatingQuestion: '出題中...',
   questionNumber: '第 {n} 題',
@@ -60,7 +60,7 @@ export const zh = {
   reportGenerating: '正在生成學習報告...',
   reportTitle: '學習報告',
   downloadReport: '↓ 下載報告',
-  retakeInterview: '重新測驗',
+  retakeInterview: '再面試一次',
 
   // SettingsModal
   settingsModalTitle: 'LLM 設定',

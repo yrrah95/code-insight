@@ -2,9 +2,9 @@
 
 # 🔍 CodeInsight
 
-**用 AI 在 5 分鐘內看懂任何陌生專案**
+**你敢讓 AI 考你自己寫的 code 嗎？**
 
-*Understand any codebase in 5 minutes with AI*
+*Drop in any codebase. Let AI interview you about it.*
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://python.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev)
@@ -17,23 +17,31 @@
 
 ## 這是什麼？ / What is this?
 
-**CodeInsight** 是一個本地端 AI 程式碼分析工具。把專案資料夾丟進去，它會：
+**CodeInsight** 是一個 AI 驅動的程式碼理解工具，專為「需要向別人解釋自己 code」的工程師設計。
 
-- 自動掃描所有程式碼檔案並分類
-- 用 AI 為每支檔案產生繁體中文說明（依賴關係、執行流程、易出錯的地方）
-- 生成技術報告（給工程師主管）與業務說明（給非技術人員）
-- 支援 AI 問答與學習測驗
+把專案資料夾丟進去，它會：
+
+- 自動掃描並分析所有程式碼檔案
+- 以 AI 為每支檔案生成深度說明（依賴關係、執行流程、易出錯的地方）
+- **化身技術面試官**：出選擇題考你這個 codebase 的架構、設計決策與技術細節
+- 即時記分、進度追蹤，答完生成個人化學習報告
+
+不管是準備 code review、接手舊專案，還是磨練技術面試——把 code 丟進去，先過 AI 這關。
 
 程式碼完全在你自己的機器上運行，不會上傳到任何第三方伺服器（除了 LLM API 呼叫）。
 
 ---
 
-**CodeInsight** is a local AI-powered code analysis tool. Drop in any project folder and it will:
+**CodeInsight** is an AI-powered code comprehension tool built for engineers who need to *explain* their code — not just read it.
+
+Drop in any project folder and it will:
 
 - Auto-scan and categorize all source files
-- Generate human-readable explanations (dependencies, execution flow, common pitfalls) for each file
-- Produce a technical report (for engineers) and a business summary (for non-technical stakeholders)
-- Support AI Q&A and learning quizzes
+- Generate deep explanations (dependencies, execution flow, common pitfalls) for each file
+- **Act as your technical interviewer**: quiz you on the codebase with multiple-choice questions covering architecture, design decisions, and implementation details
+- Track your score and progress in real time, then generate a personalized learning report
+
+Whether you're preparing for a code review, onboarding to a new repo, or rehearsing for a technical interview — put the code in, and let the AI grill you first.
 
 Your code stays on your machine — nothing is sent to any central server (only to your chosen LLM API).
 
@@ -45,10 +53,11 @@ Your code stays on your machine — nothing is sent to any central server (only 
 |------|------|
 | 📁 **智能掃描** | 遞迴掃描 30+ 種程式語言，自動分類（Controller、Service、Model 等） |
 | 🤖 **AI 檔案分析** | 每支檔案生成：用途說明、依賴關係、執行順序、易出錯的地方 |
-| 📊 **雙份報告** | 技術架構報告 + 業務說明報告，各有不同閱讀對象 |
+| 🎤 **AI 模擬面試官** | 根據你的 codebase 動態出選擇題，測試你能不能開口解釋自己的 code |
+| 🏆 **即時記分板** | 答對/答錯即時更新，進度條從 0% 到 100% 顯示掌握程度 |
+| 🎉 **答對特效** | 正確答案觸發 confetti 動畫，讓學習更上癮 |
+| 📋 **學習報告** | 作答完成後自動生成個人化報告，指出你理解的盲點 |
 | 💬 **程式碼問答** | 基於已分析的專案上下文，用自然語言提問 |
-| 💡 **比喻解釋** | 展開任一章節，點按鈕即可獲得國中生版本的解釋 |
-| 🧠 **學習測驗** | 自動生成題目，加深對專案的理解 |
 | 💾 **智能快取** | 已分析的檔案自動快取，重新開啟不需重跑 |
 | 🔧 **多 LLM 支援** | Claude、OpenAI、DeepSeek、Ollama（本地免費） |
 
@@ -171,36 +180,33 @@ ollama pull deepseek-r1    # 推理能力強
 ### Step 2 — 分析程式碼
 
 按「分析所有檔案」，AI 會逐一分析每支檔案（已快取的自動跳過）。  
-點擊 FileTree 中的任一檔案，右側會顯示：
+點擊 FileTree 中的任一檔案，可查看：
+
 - 這支程式在做什麼
 - 和哪些檔案有依賴關係
 - 執行順序是什麼
 - 最容易出問題的地方
 
-點展開各章節後，按「💡 比喻解釋」可取得更口語化的說明。
+### Step 3 — 接受 AI 面試
 
-### Step 3 — 產生報告
+分析完成後，畫面中央出現面試官模式。點擊「開始測驗」：
 
-分析完成後點擊「產生報告」，系統會依序生成：
-
-- **技術報告**：整體架構、技術選型、核心流程（適合工程師與技術主管）
-- **業務說明**：系統功能、使用情境、完整操作流程（適合非技術人員與客戶）
-
-每個章節預設折疊，點標題展開即可閱讀。
+1. AI 根據你的 codebase 動態出選擇題（最多 10 題）
+2. 每題針對架構設計、技術選型、或具體實作細節提問
+3. 答對 → confetti 慶祝 + 綠色動畫 + 詳細解析
+4. 答錯 → 搖晃提示 + 正確答案揭曉 + 引導說明
+5. 右側計分板即時更新，進度條從 0% 推進到 100%
+6. 答完 5 題以上可手動生成學習報告；10 題後自動觸發
 
 ### Step 4 — AI 問答
 
-切換到「聊天」頁籤，直接用自然語言提問：
+右側聊天欄隨時可用，用自然語言提問：
 
 ```
 這個系統的認證機制是怎麼實作的？
 哪個地方最容易出 bug？
 UserService 和 OrderService 之間的關係是什麼？
 ```
-
-### Step 5 — 學習測驗
-
-切換到「測驗」頁籤，自動生成 5 道問答題，幫助你確認是否真的看懂了這個專案。
 
 ### 快取管理
 
@@ -281,5 +287,5 @@ This tool is fully **self-hosted**:
 ---
 
 <div align="center">
-Made with ❤️ for engineers who inherit legacy code
+Made with ❤️ for engineers who need to explain their code
 </div>

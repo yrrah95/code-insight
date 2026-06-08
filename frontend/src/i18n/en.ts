@@ -16,7 +16,7 @@ export const en: { [K in keyof typeof zh]: string } = {
   cachedCountLabel: '{count} cached',
   clearCacheBtn: 'Clear Cache',
   cacheClearedMsg: 'Cache cleared',
-  interviewModeTitle: 'Technical Interview',
+  interviewModeTitle: 'AI Mock Interviewer',
   settingsTitle: 'LLM Settings',
   fileStructure: 'File Structure',
   allUpToDate: 'All files up to date, no re-analysis needed',
@@ -50,10 +50,10 @@ export const en: { [K in keyof typeof zh]: string } = {
   sendBtn: 'Send',
 
   // InterviewPanel
-  interviewReadyTitle: 'Ready for a technical quiz?',
-  interviewReadyDesc: 'AI generates multiple-choice questions based on this project to test your code understanding. Correct answers trigger special effects!',
-  startInterview: 'Start Quiz',
-  interviewWaitAnalysis: 'Please complete analysis before starting',
+  interviewReadyTitle: 'Can you actually explain your own code?',
+  interviewReadyDesc: 'AI becomes your technical interviewer — generating multiple-choice questions from this exact codebase to test if you can explain the architecture, design decisions, and implementation details. Get it right and celebrate. Finish and get a personalized learning report.',
+  startInterview: 'Start Interview',
+  interviewWaitAnalysis: 'Please complete analysis before starting the interview',
   progressLabel: 'Understanding',
   generatingQuestion: 'Generating question...',
   questionNumber: 'Question {n}',
@@ -62,7 +62,7 @@ export const en: { [K in keyof typeof zh]: string } = {
   reportGenerating: 'Generating learning report...',
   reportTitle: 'Learning Report',
   downloadReport: '↓ Download Report',
-  retakeInterview: 'Restart Quiz',
+  retakeInterview: 'Interview Again',
 
   // SettingsModal
   settingsModalTitle: 'LLM Settings',
